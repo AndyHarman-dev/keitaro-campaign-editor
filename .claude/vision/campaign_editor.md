@@ -164,6 +164,24 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
     - Recreating a purged offer may be refused.
 - `GET /offers/deleted` exists (200). `/system/version` does not (404).
 
+### Write test (throwaway campaign, archived afterwards, 2026-11-19)
+
+- **Campaign create** accepts `domain_id`, `group_id`, `traffic_source_id`, `type: position`,
+  `cost_type: CPC`. It creates **no flows**, so we create both ourselves.
+- **Forced flow**: `filters: [{name: country, mode: accept, payload: ["AU","NZ"]}]` works with
+  several codes. `action_payload` and `action_options.url` are both accepted and read back as
+  sent. We write `action_payload` (the documented field) and read either.
+- **Offer flow**: `schema: landings`, `position` honoured, and `weight` comes back `null`.
+- **`PUT /streams/{id}` with `offers` replaces the whole list.**
+  - Offers missing from the list are removed, and `offers: []` empties the flow.
+  - An offer that stays in the list keeps its link `id`. An offer that is removed and then
+    re-added gets a new link `id`, so we key offers by `offer_id`, never by link id.
+- **`PUT` without an `offers` key leaves offers untouched**, so partial updates are safe.
+- **Keitaro does not validate shares.** A single offer at 60 % was accepted, so the app must
+  enforce Σ = 100 before pushing.
+- **`DELETE /campaigns/{id}` archives.** The campaign leaves the active list and `GET` by id
+  returns 404. `GET /campaigns/deleted` is slow (it timed out at 30 s).
+
 ---
 
 ## 5. Decisions settled (scope interview, 2026-11-19)
@@ -188,10 +206,8 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 - [x] Tracker base URL works (with or without the `/admin` suffix).
 - [x] Country filter, redirect action, `domain_id`: verified read-only, see §4 *Verified on the
       live tracker*.
-- [ ] Redirect URL field: existing flows store it in **either** `action_payload` or
-      `action_options.url`. Confirm with one test create which one the 10.3 UI shows.
-- [ ] Whether `PUT /streams/{id}` with `offers` replaces or merges (needs a test write on a
-      throwaway campaign).
+- [x] Redirect URL field and `PUT /streams/{id}` semantics: settled by a write test, see §4
+      *Write test*.
 - [ ] Bring back for a purged offer: recreating offers is probably not permitted for this key
       (see §4). Fallback: show "cannot be recreated" instead of the button.
 - [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
