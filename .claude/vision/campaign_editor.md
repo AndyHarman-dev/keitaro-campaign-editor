@@ -153,6 +153,7 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 | Push/Cancel scope | **Per flow + global.** Each dirty flow has its own Push/Cancel. The top bar shows Fetch when clean, and "Push all (n)" / "Cancel all" when anything is pending. |
 | Extras | Include **View in KT** link, **Show all offers**, **offer preview** link. |
 | Show all offers | Opens a searchable list of **every offer registered in Keitaro** (not only the ones in this campaign). Removed rows always stay visible in their flow. |
+| Row order & remainder | Rows follow **Keitaro's order of offers in the flow** (as the API returns them); newly added offers go at the end. The +1 leftover points from integer rounding go to the first unpinned rows in that order, so the same input always yields the same shares. |
 
 ## 6. Open questions
 
@@ -160,9 +161,6 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 - [ ] Verify on the live instance: country filter name + payload format, redirect
       `action_type` for google.com, whether `domain_id` is accepted on create in 10.3, and
       whether `PUT /streams/{id}` with `offers` replaces or merges.
-- [ ] Deterministic row order. The remainder (+1) goes to the first rows, so "correct numbers"
-      depends on display order. The existing editor seems to reorder rows between fetches.
-      Pick one order (Keitaro's order? insertion order?) before implementing allocation.
 - [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
       Bring back? Default: the pin is kept, dormant, and returns on Bring back; auto-unpin
       applies if the numbers no longer work.
