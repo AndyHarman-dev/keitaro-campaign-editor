@@ -152,12 +152,11 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 | Pin limits | **Auto-unpin**: when pins make the numbers impossible (pinned > 100, or everything pinned and total ≠ 100), the oldest pin is released automatically and the user is told which. |
 | Push/Cancel scope | **Per flow + global.** Each dirty flow has its own Push/Cancel. The top bar shows Fetch when clean, and "Push all (n)" / "Cancel all" when anything is pending. |
 | Extras | Include **View in KT** link, **Show all offers**, **offer preview** link. |
+| Show all offers | Opens a searchable list of **every offer registered in Keitaro** (not only the ones in this campaign). Removed rows always stay visible in their flow. |
 
 ## 6. Open questions
 
 - [ ] Tracker admin base URL → `.env`.
-- [ ] Exact meaning of "Show all offers" (the existing editor only shows the button). Working
-      interpretation: toggle that reveals removed rows, which are otherwise collapsed.
 - [ ] Verify on the live instance: country filter name + payload format, redirect
       `action_type` for google.com, whether `domain_id` is accepted on create in 10.3, and
       whether `PUT /streams/{id}` with `offers` replaces or merges.
