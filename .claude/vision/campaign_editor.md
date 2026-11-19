@@ -33,6 +33,12 @@
 | **Flow (stream)** | A routing rule inside a campaign: *filters* (who) → *schema* (where). Types: `forced` (checked first, intercepts), `regular`, `default` (fallback). | Lets one link send different visitors to different places. |
 | **Offer** | Global object: a destination URL + payout + affiliate network. Attached to flows with an integer **share %**. | Split-testing: a flow rotates traffic between its offers by share. |
 
+**Terminology: flow = stream.** They are one object under two names. *Flow* is the current
+name in the Keitaro UI and docs. *Stream* is the older name, and it is still used in the Admin
+API (`/streams`, `stream_id`, `/stream_filters`) and in doc URLs. Keitaro's own docs label the
+section "Campaigns and Flows (Streams)". In this project, prose and UI say **flow**. **Stream**
+appears only where we quote the API (paths, fields, and the backend code that maps them).
+
 ### The campaign shape we create
 
 ```
