@@ -142,6 +142,28 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
   (`KEITARO_DEFAULT_DOMAIN`, `KEITARO_DEFAULT_GROUP`, `KEITARO_DEFAULT_SOURCE`, by name);
   rotation *by position*, cost model CPC.
 
+### Verified on the live tracker (read-only, 2026-11-19)
+
+- **Country filter**: `{"name": "country", "mode": "accept", "payload": ["AU", "DE"]}`, a list
+  of ISO-2 codes. Mode labels are `IS` / `IS NOT`.
+- **Redirect to google.com**: `schema: "redirect"`, `action_type: "http"` (HttpRedirect, 302).
+  The URL is in `action_payload` on some flows and in `action_options.url` on others.
+- **Offer flow**: `schema: "landings"`, `action_type: "http"`, `landings: []`, and
+  `offers: [{offer_id, share, state}]`. Each offer link has its own `id` and `stream_id`.
+  Shares on existing flows look like 50/25/25. `offer_selection` is `before_click` everywhere.
+- **Campaign**: `domain_id`, `group_id`, `traffic_source_id`, `type`, `cost_type` all come back
+  on GET. Existing campaigns use `type: position` and `cost_type: CPC`.
+- **The API key's permissions are scoped.**
+  - `GET /offers` returns only the offers this key may see (currently very few).
+  - `GET /offers/{id}` for an offer attached to someone else's flow → **403**.
+  - `GET /affiliate_networks` → 403.
+  - `GET /domains` and `GET /traffic_sources` each return a single entry.
+  - Consequences:
+    - The autocomplete and "Show all offers" list only show what the key can see.
+    - The editor must render offers it cannot read as `[id]` with no name.
+    - Recreating a purged offer may be refused.
+- `GET /offers/deleted` exists (200). `/system/version` does not (404).
+
 ---
 
 ## 5. Decisions settled (scope interview, 2026-11-19)
@@ -163,10 +185,15 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 
 ## 6. Open questions
 
-- [ ] Tracker admin base URL → `.env`.
-- [ ] Verify on the live instance: country filter name + payload format, redirect
-      `action_type` for google.com, whether `domain_id` is accepted on create in 10.3, and
-      whether `PUT /streams/{id}` with `offers` replaces or merges.
+- [x] Tracker base URL works (with or without the `/admin` suffix).
+- [x] Country filter, redirect action, `domain_id`: verified read-only, see §4 *Verified on the
+      live tracker*.
+- [ ] Redirect URL field: existing flows store it in **either** `action_payload` or
+      `action_options.url`. Confirm with one test create which one the 10.3 UI shows.
+- [ ] Whether `PUT /streams/{id}` with `offers` replaces or merges (needs a test write on a
+      throwaway campaign).
+- [ ] Bring back for a purged offer: recreating offers is probably not permitted for this key
+      (see §4). Fallback: show "cannot be recreated" instead of the button.
 - [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
       Bring back? Default: the pin is kept, dormant, and returns on Bring back; auto-unpin
       applies if the numbers no longer work.
