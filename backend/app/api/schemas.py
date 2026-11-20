@@ -1,7 +1,7 @@
 """HTTP request/response models. The TS client types are generated from these."""
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -182,3 +182,70 @@ class FlowProblem(BaseModel):
 
 class FlowProblemBody(BaseModel):
     detail: FlowProblem
+
+
+# --- stats & trends (beta) -------------------------------------------------------------
+# Money travels as a string with 4 decimals, so sub-cent EPCs survive and nothing is a float.
+
+PeriodParam = Literal["today", "7", "14", "30"]
+
+
+class CellOut(BaseModel):
+    clicks: int
+    leads: int
+    sales: int
+    rejected: int
+    conversions: int
+    revenue: str
+    epc: str | None
+    cr: float | None
+    pending: float | None
+    split: float | None
+
+
+class WeekOut(BaseModel):
+    clicks: int
+    conversions: int
+    epc: str | None
+
+
+class TrendOut(BaseModel):
+    verdict: Literal["up", "down", "within_noise", "not_enough_traffic"]
+    daily_epc: list[str | None]
+    older: WeekOut
+    newer: WeekOut
+    change: float | None
+    band: float | None
+
+
+class OfferStatsOut(BaseModel):
+    offer_id: int
+    cell: CellOut
+    trend: TrendOut
+
+
+class FlowStatsOut(BaseModel):
+    stream_id: int
+    totals: CellOut
+    offers: list[OfferStatsOut]
+
+
+class StatsDisabled(BaseModel):
+    status: Literal["disabled"]
+
+
+class StatsUnavailable(BaseModel):
+    status: Literal["unavailable"]
+    reason: str
+
+
+class StatsOk(BaseModel):
+    status: Literal["ok"]
+    period: PeriodParam
+    as_of: date
+    timezone: str
+    currency: str
+    flows: list[FlowStatsOut]
+
+
+StatsOut = Annotated[StatsDisabled | StatsUnavailable | StatsOk, Field(discriminator="status")]

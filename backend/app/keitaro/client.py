@@ -5,12 +5,17 @@ error. Paths ending in `clean_archive` are refused before any I/O: those endpoin
 archive of the whole (shared) tracker.
 """
 
+from datetime import date
 from typing import Any
 
 import httpx
 
 from app.domain.flow import OfferLink
-from app.keitaro.schemas import KtCampaign, KtNamed, KtOffer, KtStream
+from app.domain.stats import DayRow
+from app.keitaro.schemas import KtCampaign, KtNamed, KtOffer, KtReportRow, KtStream
+
+REPORT_DIMENSIONS = ["stream_id", "offer_id", "day"]
+REPORT_MEASURES = ["clicks", "leads", "sales", "rejected", "lead_revenue", "sale_revenue"]
 
 
 class KeitaroError(Exception):
@@ -20,6 +25,13 @@ class KeitaroError(Exception):
         super().__init__(f"Keitaro answered {status}: {message}")
         self.status = status
         self.message = message
+
+
+class UnreadableReport(KeitaroError):
+    """Keitaro answered 200, but the body is not the report we asked for."""
+
+    def __init__(self, message: str):
+        super().__init__(200, message)
 
 
 class ForbiddenPath(Exception):
@@ -135,6 +147,21 @@ class KeitaroClient:
 
     async def list_traffic_sources(self) -> list[KtNamed]:
         return await self._named("/traffic_sources")
+
+    # --- reports -----------------------------------------------------------------------
+
+    async def report(self, campaign_id: int, since: date, until: date, tz: str) -> list[DayRow]:
+        """One campaign's rows per flow, offer and day; `until` is inclusive (A2)."""
+        body = {"range": {"from": since.isoformat(), "to": until.isoformat(), "timezone": tz},
+                "dimensions": REPORT_DIMENSIONS, "measures": REPORT_MEASURES,
+                "filters": [{"name": "campaign_id", "operator": "EQUALS",
+                             "expression": campaign_id}]}
+        try:
+            data = await self._request("POST", "/report/build", json=body)
+            rows = [KtReportRow.model_validate(r) for r in data["rows"]]
+            return [r.to_day_row() for r in rows if r.stream_id is not None]
+        except (ValueError, KeyError, TypeError) as exc:  # ValidationError is a ValueError
+            raise UnreadableReport(type(exc).__name__) from None
 
 
 def _links(offers: list[OfferLink]) -> list[dict[str, Any]]:

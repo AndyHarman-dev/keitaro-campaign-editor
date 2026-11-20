@@ -1,17 +1,19 @@
 from collections.abc import Callable
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from app.api import campaigns, errors, flows, guard
-from app.api.deps import Config, Keitaro
+from app.api import campaigns, errors, flows, guard, stats
+from app.api.deps import Config, Keitaro, KeyedTtlCache
 from app.api.fake_controls import fake_controls
 from app.config import REPO_ROOT, Settings
 from app.config import get_settings as load_settings
 from app.db.session import session_factory
 from app.keitaro.client import KeitaroClient, KeitaroError
-from app.keitaro.seed import fake_tracker, with_fake_defaults
+from app.keitaro.seed import fake_tracker, seed_demo_traffic, with_fake_defaults
 
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
@@ -39,7 +41,9 @@ async def keitaro_ping(settings: Config, kt: Keitaro) -> dict:
 def _keitaro_factory(app: FastAPI, settings: Settings) -> Callable[[], KeitaroClient]:
     if settings.keitaro_fake:
         fake = fake_tracker(settings)
-        app.include_router(fake_controls(fake))
+        seed_demo_traffic(fake, app.state.today())
+        app.state.fake = fake
+        app.include_router(fake_controls(fake, app.state.stats_cache, app.state.today))
         return lambda: KeitaroClient("https://fake.invalid", "fake", transport=fake.transport)
     key = settings.keitaro_api_key.get_secret_value()
     return lambda: KeitaroClient(settings.keitaro_base_url, key)
@@ -64,16 +68,24 @@ def _serve_frontend(app: FastAPI, dist: Path) -> None:
         return FileResponse(target)
 
 
+def _clock(timezone: str) -> Callable[[], date]:
+    zone = ZoneInfo(timezone)
+    return lambda: datetime.now(zone).date()
+
+
 def create_app(settings: Settings, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
     app = FastAPI(title="Keitaro Campaign Editor")
     if settings.keitaro_fake:
         settings = with_fake_defaults(settings)
     app.state.settings = settings
     app.state.sessions = session_factory(settings.database_url)
+    app.state.today = _clock(settings.stats_timezone)
+    app.state.stats_cache = KeyedTtlCache(60)
     app.state.keitaro_factory = _keitaro_factory(app, settings)
     app.include_router(system)
     app.include_router(campaigns.router)
     app.include_router(flows.router)
+    app.include_router(stats.router)
     errors.install(app)
     guard.install(app, settings.allowed_hosts)
     _serve_frontend(app, frontend_dist)

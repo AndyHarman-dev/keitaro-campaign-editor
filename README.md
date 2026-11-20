@@ -76,12 +76,31 @@ cd backend && uv run uvicorn app.main:app --reload        # API on :8000
 cd frontend && npm run dev                                # UI on :5173, proxies /api to :8000
 ```
 
-**Production-style** (FastAPI serves the built UI):
+**Production-style** (FastAPI serves the built UI on one port, http://127.0.0.1:8000). Build
+the UI once; the same build serves every combination below, and stats & trends (beta) is
+switched on by the backend flag alone:
 
 ```bash
 cd frontend && npm run build && cd ../backend
-uv run uvicorn app.main:app                               # open http://127.0.0.1:8000
 ```
+
+Then, from `backend/`, pick one:
+
+| Tracker | Stats | Command |
+|---|---|---|
+| Real (`.env`) | off | `uv run alembic upgrade head && uv run uvicorn app.main:app` |
+| Real (`.env`) | on | `uv run alembic upgrade head && uv run python -m app --stats-beta` |
+| Fake | off | `export KEITARO_FAKE=1 DATABASE_URL="sqlite:///$(cd .. && pwd)/data/fake.db" KEITARO_FAKE_STATE="$(cd .. && pwd)/data/fake-keitaro.json" && mkdir -p ../data && uv run alembic upgrade head && uv run uvicorn app.main:app` |
+| Fake | on | the same exports, then `uv run alembic upgrade head && uv run python -m app --stats-beta` |
+
+- `STATS_BETA=1 uv run uvicorn app.main:app` is the same as `python -m app --stats-beta`.
+  Any uvicorn option goes after the flag, e.g. `uv run python -m app --stats-beta --port 8080`.
+- On the real tracker stats only read reports. Set `STATS_TIMEZONE` (IANA zone, default `UTC`)
+  to Keitaro's timezone so days split where Keitaro splits them, and `STATS_CURRENCY` for the
+  symbol shown.
+- `export` lasts for the terminal session: open a new terminal (or `unset KEITARO_FAKE
+  DATABASE_URL KEITARO_FAKE_STATE`) before switching back to the real tracker.
+- Leave out `KEITARO_FAKE_STATE` to have the fake start from the demo data on every start.
 
 Connectivity check: `http://127.0.0.1:8000/api/keitaro/ping`.
 
@@ -136,6 +155,61 @@ After a detach, Push is blocked until you Fetch & merge. Fetch shows the offer a
 Keitaro" and, because Keitaro's remaining shares no longer total 100, stages a rebalance: the
 unpinned offers take up the freed share (pins stay) as a pending change that Push saves. After an
 archive, Fetch tags the row "archived in Keitaro".
+
+## Stats & trends (beta)
+
+Each offer row can show its numbers from Keitaro's reports and a week-over-week trend. This is a
+**beta**, off unless you start the app with the flag:
+
+```bash
+cd backend && uv run python -m app --stats-beta --reload      # any uvicorn option works after it
+# or: STATS_BETA=1 uv run uvicorn app.main:app --reload
+```
+
+Without the flag the editor looks exactly as before: the Stats and Trends columns show `—` and
+the app never asks Keitaro for a report. Two more settings live in `.env`:
+`STATS_TIMEZONE` (default `UTC`, the timezone report days follow) and `STATS_CURRENCY`
+(default `$`).
+
+What the numbers mean (full definitions and the reasoning: `.claude/vision/stats_trends.md`):
+
+- **EPC** = (lead + sale revenue) ÷ clicks; **CR** = (leads + sales) ÷ clicks, Keitaro's own
+  conversions. Every number is summed first and divided once.
+- **Periods:** Today is the partial current day; 7 / 14 / 30 days are complete days ending
+  yesterday. "% still pending" says how much is undecided, since leads turn into sales or
+  rejections over the next days.
+- **Trend:** EPC over days −9…−3 against the week before (days −16…−10), so both weeks have
+  settled. A change smaller than the noise band (2 × √(1/c₁ + 1/c₂), c = each week's
+  conversions) reads **within noise**; a week under 100 clicks or with no conversions reads
+  *Not enough traffic*.
+- **Flow totals** cover every report row of the flow over the period, including clicks that
+  reached no offer and offers no longer in the flow, so they describe history, not your edits.
+
+**Within noise is the feature working.** At about 80 conversions a week the band is roughly
+±30 %, so most trends read "within noise". In the fake's demo campaign, Oxys BE (3717) drops
+about 16 % week over week, which looks alarming, and the screen declines to flag it because a
+change that size happens by chance at that volume. Flexacil PE (3749) rises far beyond its band
+and gets a real ▲.
+
+### Fake traffic
+
+In fake mode the demo campaign gets 30 days of seeded traffic ending today, regenerated on every
+start. These controls exist only in fake mode and clear the stats cache:
+
+```bash
+# a week of traffic for campaign 1000 (offers split by the current shares)
+curl -X POST localhost:8000/api/_fake/traffic -H 'Content-Type: application/json' \
+  -d '{"campaign_id": 1000, "days": 7, "clicks_per_day": 1000, "drift": {"3717": -0.4}}'
+# how an offer converts: chance of any postback, share approved, payout
+curl -X PUT localhost:8000/api/_fake/offers/3717/profile -H 'Content-Type: application/json' \
+  -d '{"cr_all": 0.05, "approve": 0.6, "payout": "20"}'
+curl -X DELETE 'localhost:8000/api/_fake/traffic?campaign_id=1000'   # no traffic at all
+curl -X POST localhost:8000/api/_fake/fail-next -H 'Content-Type: application/json' \
+  -d '{"status": 503}'                                                  # the next report fails
+```
+
+`drift` is a weekly change (−0.4 = 40 % lower a week later); `lag` (default on) leaves recent
+postbacks pending the way a real network does.
 
 ## Tests and quality gates
 

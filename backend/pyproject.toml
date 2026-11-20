@@ -34,4 +34,7 @@ pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-m 'not live'"
-markers = ["live: opt-in checks against the real tracker (writes a throwaway campaign)"]
+markers = [
+    "live: opt-in checks against the real tracker (writes a throwaway campaign)",
+    "slow: seeded statistical loops over the fake traffic simulator",
+]

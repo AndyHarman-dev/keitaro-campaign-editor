@@ -1,4 +1,6 @@
 import type { Schemas } from '../../api/client'
+import type { PeriodKey } from '../stats/format'
+import { StatsCell, TrendCell, type RowStats } from '../stats/StatsCells'
 import { rowAction, rowTag } from './rowLabels'
 import ShareField from './ShareField'
 import type { OpIn } from './useEditor'
@@ -11,9 +13,11 @@ interface Props {
   row: Row
   onOp: (op: OpIn) => void
   onForget: (offerId: number) => void
+  stats: RowStats
+  period: PeriodKey
 }
 
-export default function OfferRowView({ row, onOp, onForget }: Props) {
+export default function OfferRowView({ row, onOp, onForget, stats, period }: Props) {
   const removed = row.status === 'removed'
   const tag = rowTag(row)
   const action = rowAction(row)
@@ -36,8 +40,8 @@ export default function OfferRowView({ row, onOp, onForget }: Props) {
           aria-pressed={row.pinned} aria-label={pinLabel} title={pinLabel}
           onClick={() => onOp({ kind: 'toggle_pin', offer_id: row.offer_id })}>📌</button>
       </div>
-      <span role="cell" className="muted placeholder" aria-label="No stats yet">—</span>
-      <span role="cell" className="muted placeholder" aria-label="No trends yet">—</span>
+      <StatsCell stats={stats} period={period} />
+      <TrendCell stats={stats} />
       <div role="cell" className="actions">
         <button type="button" className="secondary" onClick={act}>{ACTION_LABEL[action]}</button>
       </div>

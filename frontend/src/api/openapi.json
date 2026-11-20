@@ -759,6 +759,91 @@
      }
     }
    }
+  },
+  "/api/campaigns/{campaign_id}/stats": {
+   "get": {
+    "summary": "Stats",
+    "description": "Per flow: totals over the period and, per offer, its numbers and trend. Always 200.",
+    "operationId": "stats_api_campaigns__campaign_id__stats_get",
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Campaign Id"
+      }
+     },
+     {
+      "name": "period",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "today",
+        "7",
+        "14",
+        "30"
+       ],
+       "type": "string",
+       "default": "7",
+       "title": "Period"
+      }
+     },
+     {
+      "name": "refresh",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Refresh"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "oneOf": [
+          {
+           "$ref": "#/components/schemas/StatsDisabled"
+          },
+          {
+           "$ref": "#/components/schemas/StatsUnavailable"
+          },
+          {
+           "$ref": "#/components/schemas/StatsOk"
+          }
+         ],
+         "discriminator": {
+          "propertyName": "status",
+          "mapping": {
+           "disabled": "#/components/schemas/StatsDisabled",
+           "unavailable": "#/components/schemas/StatsUnavailable",
+           "ok": "#/components/schemas/StatsOk"
+          }
+         },
+         "title": "Response Stats Api Campaigns  Campaign Id  Stats Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -871,6 +956,92 @@
      "name"
     ],
     "title": "CampaignRef"
+   },
+   "CellOut": {
+    "properties": {
+     "clicks": {
+      "type": "integer",
+      "title": "Clicks"
+     },
+     "leads": {
+      "type": "integer",
+      "title": "Leads"
+     },
+     "sales": {
+      "type": "integer",
+      "title": "Sales"
+     },
+     "rejected": {
+      "type": "integer",
+      "title": "Rejected"
+     },
+     "conversions": {
+      "type": "integer",
+      "title": "Conversions"
+     },
+     "revenue": {
+      "type": "string",
+      "title": "Revenue"
+     },
+     "epc": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Epc"
+     },
+     "cr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cr"
+     },
+     "pending": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pending"
+     },
+     "split": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Split"
+     }
+    },
+    "type": "object",
+    "required": [
+     "clicks",
+     "leads",
+     "sales",
+     "rejected",
+     "conversions",
+     "revenue",
+     "epc",
+     "cr",
+     "pending",
+     "split"
+    ],
+    "title": "CellOut"
    },
    "CreateCampaignIn": {
     "properties": {
@@ -1077,6 +1248,31 @@
      "detail"
     ],
     "title": "FlowProblemBody"
+   },
+   "FlowStatsOut": {
+    "properties": {
+     "stream_id": {
+      "type": "integer",
+      "title": "Stream Id"
+     },
+     "totals": {
+      "$ref": "#/components/schemas/CellOut"
+     },
+     "offers": {
+      "items": {
+       "$ref": "#/components/schemas/OfferStatsOut"
+      },
+      "type": "array",
+      "title": "Offers"
+     }
+    },
+    "type": "object",
+    "required": [
+     "stream_id",
+     "totals",
+     "offers"
+    ],
+    "title": "FlowStatsOut"
    },
    "FlowView": {
     "properties": {
@@ -1303,6 +1499,27 @@
     ],
     "title": "OfferOut"
    },
+   "OfferStatsOut": {
+    "properties": {
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     },
+     "cell": {
+      "$ref": "#/components/schemas/CellOut"
+     },
+     "trend": {
+      "$ref": "#/components/schemas/TrendOut"
+     }
+    },
+    "type": "object",
+    "required": [
+     "offer_id",
+     "cell",
+     "trend"
+    ],
+    "title": "OfferStatsOut"
+   },
    "OpRequest": {
     "properties": {
      "version": {
@@ -1502,6 +1719,88 @@
     ],
     "title": "SetShareIn"
    },
+   "StatsDisabled": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "const": "disabled",
+      "title": "Status"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status"
+    ],
+    "title": "StatsDisabled"
+   },
+   "StatsOk": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "const": "ok",
+      "title": "Status"
+     },
+     "period": {
+      "type": "string",
+      "enum": [
+       "today",
+       "7",
+       "14",
+       "30"
+      ],
+      "title": "Period"
+     },
+     "as_of": {
+      "type": "string",
+      "format": "date",
+      "title": "As Of"
+     },
+     "timezone": {
+      "type": "string",
+      "title": "Timezone"
+     },
+     "currency": {
+      "type": "string",
+      "title": "Currency"
+     },
+     "flows": {
+      "items": {
+       "$ref": "#/components/schemas/FlowStatsOut"
+      },
+      "type": "array",
+      "title": "Flows"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "period",
+     "as_of",
+     "timezone",
+     "currency",
+     "flows"
+    ],
+    "title": "StatsOk"
+   },
+   "StatsUnavailable": {
+    "properties": {
+     "status": {
+      "type": "string",
+      "const": "unavailable",
+      "title": "Status"
+     },
+     "reason": {
+      "type": "string",
+      "title": "Reason"
+     }
+    },
+    "type": "object",
+    "required": [
+     "status",
+     "reason"
+    ],
+    "title": "StatsUnavailable"
+   },
    "TogglePinIn": {
     "properties": {
      "kind": {
@@ -1520,6 +1819,72 @@
      "offer_id"
     ],
     "title": "TogglePinIn"
+   },
+   "TrendOut": {
+    "properties": {
+     "verdict": {
+      "type": "string",
+      "enum": [
+       "up",
+       "down",
+       "within_noise",
+       "not_enough_traffic"
+      ],
+      "title": "Verdict"
+     },
+     "daily_epc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Daily Epc"
+     },
+     "older": {
+      "$ref": "#/components/schemas/WeekOut"
+     },
+     "newer": {
+      "$ref": "#/components/schemas/WeekOut"
+     },
+     "change": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change"
+     },
+     "band": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Band"
+     }
+    },
+    "type": "object",
+    "required": [
+     "verdict",
+     "daily_epc",
+     "older",
+     "newer",
+     "change",
+     "band"
+    ],
+    "title": "TrendOut"
    },
    "ValidationError": {
     "properties": {
@@ -1590,6 +1955,36 @@
      "versions"
     ],
     "title": "VersionsIn"
+   },
+   "WeekOut": {
+    "properties": {
+     "clicks": {
+      "type": "integer",
+      "title": "Clicks"
+     },
+     "conversions": {
+      "type": "integer",
+      "title": "Conversions"
+     },
+     "epc": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Epc"
+     }
+    },
+    "type": "object",
+    "required": [
+     "clicks",
+     "conversions",
+     "epc"
+    ],
+    "title": "WeekOut"
    }
   }
  }
