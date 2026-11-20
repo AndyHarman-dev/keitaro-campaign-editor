@@ -212,6 +212,27 @@ arrive rather than the day of the click. We assume click date, Keitaro's default
 
 ## 4. Approach (no implementation detail)
 
+### Beta: off unless the app is started with `--stats-beta`
+
+The product brief behind [`campaign_editor.md`](campaign_editor.md) does not ask for stats: it
+keeps Stats and Trends as visible placeholders. So the whole feature is a **beta**, and by
+default the app behaves exactly as that brief specifies.
+
+- **Off (default):** the Stats and Trends columns stay empty placeholders (`—`), there is no
+  period switch and no flow totals, and the app never calls Keitaro's report API.
+- **On:** start the app with `--stats-beta`. The backend then fetches the report, computes the
+  numbers, and the editor shows everything this vision describes.
+- **How it is switched:** one backend setting, `stats_beta`, decides it. The UI asks the
+  backend whether the beta is on and never decides by itself. When it is off, the stats
+  endpoint answers "disabled" without contacting Keitaro.
+- **The flag needs a launcher.** Today the app starts with `uvicorn app.main:app`, which
+  rejects unknown flags. A thin launcher (`uv run python -m app --stats-beta`, passing
+  everything else on to uvicorn) sets the setting. It also works as the environment variable
+  `STATS_BETA=1`, because uvicorn's `--reload` restarts the app in a new process, where only
+  the environment survives.
+- **Tests cover both modes:** with the beta off, no report request is ever sent and the
+  columns are placeholders; with it on, the full behaviour.
+
 - **One report per campaign**, grouped by flow, offer and day, countable measures only, covering
   the longest window needed (30 complete days for the 30-day view, else the 16 the trend needs,
   plus today). Every column is cut from that one answer.
@@ -293,6 +314,10 @@ check takes five minutes.
 - **Q5 → Attribution:** assume Keitaro's default, click date. Recent days may still change, so
   the trend skips today and draws the last 2 days lighter. If the tracker turns out to report by
   conversion date, only the lighter tail and its label change; the maths stays.
+
+- **Beta flag:** Stats & Trends ship as a beta, off by default, switched on by starting the app
+  with `--stats-beta` (or `STATS_BETA=1`). Off, the columns stay the placeholders the product
+  brief specifies (§ 4).
 
 **Skeptic review (2026-11-20).** An adversarial review of this vision went metric by metric.
 Folded in, with the user's approval:
