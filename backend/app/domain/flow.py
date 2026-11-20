@@ -38,7 +38,7 @@ class Pin:
 class OfferRow:
     offer_id: int
     status: RowStatus
-    share: int
+    share: int = 0
     kt_state: str = "active"
     pin: Pin | None = None  # dormant while the row is removed
     removed_by: RemovedBy | None = None
@@ -153,7 +153,7 @@ def _bring_back(state: FlowState, op: BringBack) -> Result:
         return _archived(state, op.offer_id)
     if row.active:
         return state, [f"Offer [{op.offer_id}] is already in this flow."]
-    share = row.pin.share if row.pin else 0
+    share = row.pin.share if row.pin else row.share  # a removed row holds 0; rebalance splits it
     back = replace(row, status=RowStatus.ACTIVE, share=share, removed_by=None)
     notes = [f"Brought back [{op.offer_id}] with its pin at {share}%."] if row.pin else []
     return state.put(back), notes
@@ -162,7 +162,7 @@ def _bring_back(state: FlowState, op: BringBack) -> Result:
 def _add(state: FlowState, op: Add) -> Result:
     row = state.find(op.offer_id)
     if row is None:
-        new = OfferRow(offer_id=op.offer_id, status=RowStatus.ACTIVE, share=0)
+        new = OfferRow(offer_id=op.offer_id, status=RowStatus.ACTIVE)  # share is set by rebalance
         return replace(state, rows=(*state.rows, new)), []
     return _bring_back(state, BringBack(op.offer_id))
 
