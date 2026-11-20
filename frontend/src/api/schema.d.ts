@@ -358,6 +358,11 @@ export interface components {
             dirty: boolean;
             /** Pending Count */
             pending_count: number;
+            /**
+             * Total
+             * @description sum of active shares; 100 unless Keitaro holds otherwise
+             */
+            total: number;
             /** Rows */
             rows: components["schemas"]["RowView"][];
         };
@@ -461,6 +466,8 @@ export interface components {
             change: ("added" | "removed" | "restored" | "share") | null;
             /** Base Share */
             base_share: number | null;
+            /** Preview Url */
+            preview_url: string | null;
         };
         /** SetShareIn */
         SetShareIn: {

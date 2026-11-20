@@ -21,10 +21,13 @@ class Settings(BaseSettings):
     keitaro_default_source: str = Field(default="", description="Traffic source name")
     database_url: str = f"sqlite:///{REPO_ROOT / 'data' / 'app.db'}"
 
+    @property
+    def tracker_host(self) -> str:
+        return self.keitaro_base_url.rstrip("/").removesuffix("/admin")
+
     def campaign_admin_url(self, campaign_id: int) -> str:
         """Link to the campaign in Keitaro's admin UI ("View in KT")."""
-        host = self.keitaro_base_url.rstrip("/").removesuffix("/admin")
-        return f"{host}/admin/#!/campaigns/{campaign_id}"
+        return f"{self.tracker_host}/admin/#!/campaigns/{campaign_id}"
 
 
 @lru_cache

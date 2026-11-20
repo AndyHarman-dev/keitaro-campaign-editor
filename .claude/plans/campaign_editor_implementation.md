@@ -712,6 +712,25 @@ fast and locally.
   refresh, GEO chips and validation, preview, disabled-until-ready, create with defaults
   and key → navigates, Advanced override, busy state, Keitaro error with/without archive,
   400 message, network failure); crapper max 10.0, dryer clean, mutator 95/95.
+- **2026-11-20 — Phase 8.** Context: Editor screen. Actions: `EditorScreen` (top bar: Show
+  all offers, View in KT, Fetch from KT when clean / Cancel all + Push all (n) when dirty;
+  notes toast; flows without offers listed below), `useEditor` (one hook for all calls;
+  409 problems kept per flow; fetch/reload clear them), `FlowSection` (header "Flow 2 #id"
+  with summary and total, pending badge, per-flow Push/Cancel, conflict banner "Fetch &
+  merge" or stale banner "Reload", ARIA table of rows, Add box reusing `OfferPicker`),
+  `OfferRowView` (tags, preview link, "no access to this offer" for unreadable offers, pin
+  toggle with `aria-pressed`, Remove / Bring back / Remove-forgets-archived), `ShareField`,
+  `rowLabels.ts`, `AllOffersPanel`. Backend: `FlowView.total`, `RowView.preview_url` (from the
+  offer's `preview_path`), `Catalog` in `views.py`. Decisions: the design's "Undo" on the
+  auto-unpin notice is not built (the vision does not require it; the backend note still
+  says which pin was released); an unreadable offer is shown as "[id] no access to this
+  offer" rather than a bare id, so the empty name reads as intended. Fixed during TDD: the
+  share input's label included the visible "%", so its accessible name was wrong; the input
+  now carries its own `aria-label`. Verification: verified — 49 frontend tests (ShareField:
+  Enter, blur, Escape, unchanged, empty, clamp, disabled; editor: layout, tags, every op
+  with the seen version, forget, add, notes, fetch, push/cancel per flow and all, conflict →
+  Fetch & merge, stale → Reload, top-level failure, Show all offers); 143 backend tests;
+  crapper max 10, dryer clean, mutator frontend 163/163, backend api/keitaro/config 47/47.
 
 ---
 

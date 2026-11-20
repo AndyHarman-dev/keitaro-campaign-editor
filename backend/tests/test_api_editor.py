@@ -69,8 +69,9 @@ def test_first_open_fetches_both_flows(api, cid):
     assert offers["rows"] == [{
         "offer_id": 18813, "name": "Flexacil PE", "share": 100, "pinned": False,
         "status": "active", "removed_by": None, "archived": False, "change": None,
-        "base_share": 100,
+        "base_share": 100, "preview_url": "https://tracker.example/lander/flex/_preview.png",
     }]
+    assert offers["total"] == 100
     assert (offers["dirty"], offers["pending_count"]) == (False, 0)
 
 
@@ -79,7 +80,15 @@ def test_unreadable_offer_is_shown_by_id_only(api, fake, cid):
     fake.streams[flow["stream_id"]]["offers"].append(
         {"id": 1, "offer_id": 500, "share": 0, "state": "active"})
     view = api.post(f"/api/campaigns/{cid}/fetch").json()
-    assert offer_flow(view)["rows"][1]["name"] is None
+    row = offer_flow(view)["rows"][1]
+    assert (row["name"], row["preview_url"]) == (None, None)
+
+
+def test_flow_total_is_the_sum_of_active_shares(api, fake, cid):
+    flow = offer_flow(editor(api, cid))
+    fake.streams[flow["stream_id"]]["offers"][0]["share"] = 60  # Keitaro allows it
+    view = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert offer_flow(view)["total"] == 60
 
 
 def test_unknown_campaign_reports_keitaros_404(api):

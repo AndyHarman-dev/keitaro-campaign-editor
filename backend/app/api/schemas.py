@@ -95,6 +95,7 @@ class RowView(BaseModel):
     change: Literal["added", "removed", "restored", "share"] | None = Field(
         description="pending change against the last fetch/push")
     base_share: int | None
+    preview_url: str | None
 
 
 class FlowView(BaseModel):
@@ -107,6 +108,7 @@ class FlowView(BaseModel):
     version: int
     dirty: bool
     pending_count: int
+    total: int = Field(description="sum of active shares; 100 unless Keitaro holds otherwise")
     rows: list[RowView]
 
 

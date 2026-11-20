@@ -21,7 +21,7 @@ def fake() -> FakeKeitaro:
     kt.groups = [{"id": 2, "name": "Team", "type": "campaigns"},
                  {"id": 9, "name": "Offer group", "type": "offers"}]
     kt.sources = [{"id": 3, "name": "Source"}]
-    kt.add_offer(18813, "Flexacil PE")
+    kt.add_offer(18813, "Flexacil PE", preview_path="/lander/flex/_preview.png")
     kt.add_offer(3717, "Oxys BE")
     kt.add_offer(500, "Someone else's offer", readable=False)
     return kt

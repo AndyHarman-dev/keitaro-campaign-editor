@@ -13,7 +13,7 @@ from app.api.schemas import (
     VersionIn,
     VersionsIn,
 )
-from app.api.views import editor_view
+from app.api.views import Catalog, editor_view
 from app.config import Settings
 from app.db.codec import op_from_json
 from app.keitaro.client import KeitaroClient
@@ -26,12 +26,9 @@ Db = Annotated[Session, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
 
 
-async def _names(kt: KeitaroClient) -> dict[int, str]:
-    return {o.id: o.name for o in await cached_offers(kt)}
-
-
 async def _view(kt: KeitaroClient, outcome: Outcome, settings: Settings) -> EditorView:
-    return editor_view(outcome, await _names(kt), settings)
+    catalog = Catalog(await cached_offers(kt), settings.tracker_host)
+    return editor_view(outcome, catalog, settings)
 
 
 @router.get("/campaigns/{campaign_id}/editor")

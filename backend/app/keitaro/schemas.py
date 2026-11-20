@@ -32,6 +32,7 @@ class KtOffer(_Kt):
     id: int
     name: str
     state: str = "active"
+    preview_path: str | None = None  # e.g. "/lander/x/_preview.png" for local landers
 
 
 class KtFilter(_Kt):

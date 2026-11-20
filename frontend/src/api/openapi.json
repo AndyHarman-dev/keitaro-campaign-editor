@@ -1116,6 +1116,11 @@
       "type": "integer",
       "title": "Pending Count"
      },
+     "total": {
+      "type": "integer",
+      "title": "Total",
+      "description": "sum of active shares; 100 unless Keitaro holds otherwise"
+     },
      "rows": {
       "items": {
        "$ref": "#/components/schemas/RowView"
@@ -1135,6 +1140,7 @@
      "version",
      "dirty",
      "pending_count",
+     "total",
      "rows"
     ],
     "title": "FlowView"
@@ -1429,6 +1435,17 @@
        }
       ],
       "title": "Base Share"
+     },
+     "preview_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview Url"
      }
     },
     "type": "object",
@@ -1441,7 +1458,8 @@
      "removed_by",
      "archived",
      "change",
-     "base_share"
+     "base_share",
+     "preview_url"
     ],
     "title": "RowView"
    },

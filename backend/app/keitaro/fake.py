@@ -66,8 +66,10 @@ class FakeKeitaro:
 
     # --- test helpers ------------------------------------------------------------------
 
-    def add_offer(self, offer_id: int, name: str, readable: bool = True) -> None:
-        self.offers[offer_id] = {"id": offer_id, "name": name, "state": "active"}
+    def add_offer(self, offer_id: int, name: str, readable: bool = True,
+                  preview_path: str | None = None) -> None:
+        self.offers[offer_id] = {"id": offer_id, "name": name, "state": "active",
+                                 "preview_path": preview_path}
         if not readable:
             self.unreadable.add(offer_id)
 
