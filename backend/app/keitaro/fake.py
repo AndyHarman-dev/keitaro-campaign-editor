@@ -116,9 +116,19 @@ class FakeKeitaro:
         body = json.loads(request.content)
         if not body.get("name") or not body.get("alias"):
             return _err(400, "name and alias are required")
-        campaign = {"id": next(self._ids), "state": "active", **body}
+        campaign = {"id": next(self._ids), "state": "active", **body,
+                    "group": self._name(self.groups, body.get("group_id")),
+                    "domain": self._domain_url(body.get("domain_id"))}
         self.campaigns[campaign["id"]] = campaign
         return _ok(campaign)
+
+    @staticmethod
+    def _name(items: list[dict[str, Any]], item_id: int | None) -> str | None:
+        return next((i["name"] for i in items if i["id"] == item_id), None)
+
+    def _domain_url(self, domain_id: int | None) -> str | None:
+        name = self._name(self.domains, domain_id)
+        return f"https://{name}/" if name else None
 
     def _get_campaign(self, request: httpx.Request, match: re.Match[str]) -> httpx.Response:
         campaign = self._live_campaign(match)

@@ -188,3 +188,13 @@ async def test_detached_offer_leaves_the_flow(kt, fake):
                                           OfferLink(500, 50, "active"))
     fake.detach_offer(sid, 18813)
     assert [link.offer_id for link in (await kt.get_stream(sid)).links] == [500]
+
+
+async def test_campaigns_carry_group_and_domain_names_like_keitaro(kt, fake):
+    fake.domains = [{"id": 1, "name": "track.example"}]
+    fake.groups = [{"id": 2, "name": "Team", "type": "campaigns"}]
+    campaign = await kt.create_campaign(name="c", alias="a", domain_id=1, group_id=2,
+                                        traffic_source_id=3)
+    listed = (await kt.list_campaigns())[0]
+    assert (listed.group, listed.domain) == ("Team", "https://track.example/")
+    assert (await kt.get_campaign(campaign.id)).group == "Team"

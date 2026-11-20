@@ -731,6 +731,26 @@ fast and locally.
   with the seen version, forget, add, notes, fetch, push/cancel per flow and all, conflict →
   Fetch & merge, stale → Reload, top-level failure, Show all offers); 143 backend tests;
   crapper max 10, dryer clean, mutator frontend 163/163, backend api/keitaro/config 47/47.
+- **2026-11-20 — Phase 9.** Context: e2e, serving, README. Actions: `app/main.py` became
+  `create_app(settings, frontend_dist)`; dependencies read settings, sessions and the Keitaro
+  client factory from `app.state` (`Keitaro`/`Db`/`Config` aliases now live once in
+  `deps.py`); `db/session.py` exposes `session_factory` instead of a module-level engine;
+  `Settings.keitaro_fake` + `keitaro_configured`; `app/keitaro/seed.py` (demo offers, an
+  unreadable offer, a demo campaign; blank `.env` defaults get the seeded names);
+  `app/api/fake_controls.py` (detach / archive, mounted only in fake mode, hidden from the
+  schema); SPA serving with path-traversal guard; FakeKeitaro now returns campaign `group`
+  and `domain` like the real list; Playwright (`playwright.config.ts`, `e2e/`) runs the built
+  app on uvicorn in fake mode with a fresh SQLite file; README rewritten; `.env.example`
+  documents `KEITARO_FAKE`. Decisions: the ping test now drives `create_app` with respx
+  (same pinned output). The plan's "one manual live session" was covered by the live API
+  round trip (Phase 6) plus a real-mode smoke run of the production build (read-only: UI
+  served, ping 209 campaigns, all `.env` defaults resolved); a click-through on the real
+  tracker is left to the user. Mutation found two dead session options
+  (`autoflush`/`expire_on_commit`), removed, and an untested `include_in_schema=False`,
+  now pinned. Verification: verified — 151 backend tests, 49 frontend tests, **6/6
+  Playwright specs** (create via form, add/rebalance/pin/remove/bring back/push, blur
+  applies, conflict → Fetch & merge, archived → Remove, screenshots reviewed at 1280 px and
+  390 px), `pytest -m live` 2/2, `scripts/check.sh` (full, with mutation) green.
 
 ---
 

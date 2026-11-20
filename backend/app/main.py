@@ -1,33 +1,79 @@
-from fastapi import FastAPI
+from collections.abc import Callable
+from pathlib import Path
+
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from app.api import campaigns, errors, flows
-from app.config import get_settings
+from app.api.deps import Config, Keitaro
+from app.api.fake_controls import fake_controls
+from app.config import REPO_ROOT, Settings
+from app.config import get_settings as load_settings
+from app.db.session import session_factory
 from app.keitaro.client import KeitaroClient, KeitaroError
+from app.keitaro.seed import seeded_fake, with_fake_defaults
 
-app = FastAPI(title="Keitaro Campaign Editor")
-app.include_router(campaigns.router)
-app.include_router(flows.router)
-errors.install(app)
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+
+system = APIRouter(prefix="/api")
 
 
-@app.get("/api/health")
+@system.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/api/keitaro/ping")
-async def keitaro_ping() -> dict:
+@system.get("/keitaro/ping")
+async def keitaro_ping(settings: Config, kt: Keitaro) -> dict:
     """Checks that the tracker URL and API key in .env work (lists campaign count)."""
-    settings = get_settings()
-    if not settings.keitaro_base_url or not settings.keitaro_api_key.get_secret_value():
+    if not settings.keitaro_configured:
         return {"configured": False}
-    client = KeitaroClient(settings.keitaro_base_url, settings.keitaro_api_key.get_secret_value())
     try:
-        campaigns = await client.list_campaigns()
+        found = await kt.list_campaigns()
     except KeitaroError as exc:
         return {"configured": True, "reachable": False, "status_code": exc.status,
                 "campaigns": None}
-    finally:
-        await client.aclose()
-    return {"configured": True, "reachable": True, "status_code": 200,
-            "campaigns": len(campaigns)}
+    return {"configured": True, "reachable": True, "status_code": 200, "campaigns": len(found)}
+
+
+def _keitaro_factory(app: FastAPI, settings: Settings) -> Callable[[], KeitaroClient]:
+    if settings.keitaro_fake:
+        fake = seeded_fake(settings)
+        app.include_router(fake_controls(fake))
+        return lambda: KeitaroClient("https://fake.invalid", "fake", transport=fake.transport)
+    key = settings.keitaro_api_key.get_secret_value()
+    return lambda: KeitaroClient(settings.keitaro_base_url, key)
+
+
+def _serve_frontend(app: FastAPI, dist: Path) -> None:
+    """Serves the built SPA: real files as they are, any other non-API path as index.html."""
+    root = dist.resolve()
+    if not (root / "index.html").is_file():
+        return
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def spa(path: str) -> FileResponse:
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404)
+        target = (root / path).resolve()
+        if path and target.is_file() and target.is_relative_to(root):
+            return FileResponse(target)
+        return FileResponse(root / "index.html")
+
+
+def create_app(settings: Settings, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:
+    app = FastAPI(title="Keitaro Campaign Editor")
+    if settings.keitaro_fake:
+        settings = with_fake_defaults(settings)
+    app.state.settings = settings
+    app.state.sessions = session_factory(settings.database_url)
+    app.state.keitaro_factory = _keitaro_factory(app, settings)
+    app.include_router(system)
+    app.include_router(campaigns.router)
+    app.include_router(flows.router)
+    errors.install(app)
+    _serve_frontend(app, frontend_dist)
+    return app
+
+
+app = create_app(load_settings())

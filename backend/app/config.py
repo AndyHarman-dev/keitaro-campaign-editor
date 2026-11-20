@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     keitaro_default_group: str = Field(default="", description="Campaign group name")
     keitaro_default_source: str = Field(default="", description="Traffic source name")
     database_url: str = f"sqlite:///{REPO_ROOT / 'data' / 'app.db'}"
+    keitaro_fake: bool = Field(
+        default=False, description="Use the in-process fake tracker (demos and e2e; no key needed)")
+
+    @property
+    def keitaro_configured(self) -> bool:
+        return self.keitaro_fake or bool(
+            self.keitaro_base_url and self.keitaro_api_key.get_secret_value())
 
     @property
     def tracker_host(self) -> str:

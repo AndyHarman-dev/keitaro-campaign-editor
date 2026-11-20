@@ -1,10 +1,8 @@
-from typing import Annotated
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 
-from app.api.deps import cached_offers, get_keitaro, get_session, get_settings
+from app.api.deps import Config, Db, Keitaro, cached_offers
 from app.api.schemas import (
     CampaignOut,
     CreateCampaignIn,
@@ -15,14 +13,9 @@ from app.api.schemas import (
     Named,
     OfferOut,
 )
-from app.config import Settings
-from app.keitaro.client import KeitaroClient
 from app.services.campaigns import NewCampaign, create_campaign, load_lookups
 
 router = APIRouter(prefix="/api", responses={502: {"model": KeitaroFailureBody}})
-Keitaro = Annotated[KeitaroClient, Depends(get_keitaro)]
-Db = Annotated[Session, Depends(get_session)]
-Config = Annotated[Settings, Depends(get_settings)]
 
 
 def _matches(q: str, *fields: object) -> bool:

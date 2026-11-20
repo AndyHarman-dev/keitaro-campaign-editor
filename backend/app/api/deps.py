@@ -1,31 +1,40 @@
-"""FastAPI dependencies. Tests override get_keitaro / get_session / get_settings."""
+"""FastAPI dependencies. create_app() puts what they hand out on app.state; tests may override."""
 
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
-from typing import Any
+from typing import Annotated, Any
 
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
-from app.db.session import SessionLocal
+from app.config import Settings
 from app.keitaro.client import KeitaroClient
 from app.keitaro.schemas import KtOffer
 
-__all__ = ["cached_offers", "get_keitaro", "get_session", "get_settings", "offers_cache"]
+__all__ = ["Config", "Db", "Keitaro", "cached_offers", "get_keitaro", "get_session", "get_settings",
+           "offers_cache"]
 
 
-async def get_keitaro() -> AsyncIterator[KeitaroClient]:
-    settings = get_settings()
-    client = KeitaroClient(settings.keitaro_base_url, settings.keitaro_api_key.get_secret_value())
+def get_settings(request: Request) -> Settings:
+    return request.app.state.settings
+
+
+async def get_keitaro(request: Request) -> AsyncIterator[KeitaroClient]:
+    client = request.app.state.keitaro_factory()
     try:
         yield client
     finally:
         await client.aclose()
 
 
-def get_session() -> Iterator[Session]:
-    with SessionLocal() as session:
+def get_session(request: Request) -> Iterator[Session]:
+    with request.app.state.sessions() as session:
         yield session
+
+
+Keitaro = Annotated[KeitaroClient, Depends(get_keitaro)]
+Db = Annotated[Session, Depends(get_session)]
+Config = Annotated[Settings, Depends(get_settings)]
 
 
 class TtlCache:

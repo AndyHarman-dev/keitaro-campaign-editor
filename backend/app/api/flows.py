@@ -1,9 +1,7 @@
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 
-from app.api.deps import cached_offers, get_keitaro, get_session, get_settings
+from app.api.deps import Config, Db, Keitaro, cached_offers
 from app.api.schemas import (
     EditorView,
     FlowProblemBody,
@@ -21,9 +19,6 @@ from app.services.flows import FlowService, Outcome
 
 router = APIRouter(prefix="/api", responses={502: {"model": KeitaroFailureBody},
                                                 409: {"model": FlowProblemBody}})
-Keitaro = Annotated[KeitaroClient, Depends(get_keitaro)]
-Db = Annotated[Session, Depends(get_session)]
-Config = Annotated[Settings, Depends(get_settings)]
 
 
 async def _view(kt: KeitaroClient, outcome: Outcome, settings: Settings) -> EditorView:

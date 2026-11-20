@@ -88,7 +88,8 @@ async def test_editor_round_trip_through_the_api(kt, tmp_path):
         with sessions() as s:
             yield s
 
-    app.dependency_overrides = {deps.get_session: session}
+    app.dependency_overrides = {deps.get_session: session,
+                                deps.get_settings: lambda: get_settings()}
     deps.offers_cache.clear()
     api = TestClient(app)
     offer_id = (await kt.list_offers())[0].id
