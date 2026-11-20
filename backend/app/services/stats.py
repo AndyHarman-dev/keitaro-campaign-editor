@@ -67,7 +67,9 @@ async def campaign_stats(kt: KeitaroClient, settings: Settings, cache: KeyedTtlC
                          campaign_id: int, param: str, today: date,
                          refresh: bool) -> StatsOk | StatsUnavailable:
     key = (campaign_id, param, today)
-    cached = None if refresh else cache.get(key)
+    if refresh:  # after Fetch or Push every period of this campaign is stale, not just this one
+        cache.drop(lambda k: k[0] == campaign_id)
+    cached = cache.get(key)
     if cached is not None:
         return cached
     period = PERIODS[param]

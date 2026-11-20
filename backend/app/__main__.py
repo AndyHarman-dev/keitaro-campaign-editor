@@ -12,7 +12,7 @@ import uvicorn
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="python -m app", add_help=False)
+    parser = argparse.ArgumentParser(prog="python -m app", add_help=False, allow_abbrev=False)
     parser.add_argument("--stats-beta", action="store_true")
     ours, rest = parser.parse_known_args(argv)
     if ours.stats_beta:

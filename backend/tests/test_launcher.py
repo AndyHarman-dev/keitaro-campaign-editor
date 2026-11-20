@@ -46,3 +46,8 @@ def test_an_explicit_target_is_passed_through(stub):
 def test_help_goes_to_uvicorn(stub):
     main(["--help"])
     assert stub.calls[0][0] == ["--help"]
+
+
+def test_a_prefix_of_the_flag_is_not_taken_for_it(stub):
+    main(["--st"])
+    assert stub.calls == [(["--st"], None, "app.main:app")]

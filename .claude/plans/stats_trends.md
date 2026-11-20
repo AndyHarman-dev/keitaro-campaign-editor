@@ -628,6 +628,19 @@ decision.
   mutator 0 survivors (backend 274 + frontend 284 sites, `--mutate-all`), crapper < 10,
   dryer clean. Needs user action: confirm Done; decide merge into `feat/stats-trends-design`.
 
+- **2026-11-20**: context: the user asked for a merge request and an overall review of it;
+  opened PR #3 (`feat/stats-impl` → `feat/stats-trends-design`) and ran `/code-review medium 3`
+  (9 findings). Actions: applied 7 — report rows with no flow are skipped instead of failing the
+  report; `offer_id`/`stream_id` "0" mean none; a `refresh` drops every cached period of that
+  campaign (switching period after a push showed pre-push numbers); EPCs under a cent show 4
+  decimals; the launcher no longer takes `--st…` for `--stats-beta` and the beta-off e2e server
+  forces `STATS_BETA=0`; a misspelt `STATS_TIMEZONE` is refused with a clear message; fake
+  traffic sizes are bounded. Decisions: rejected 2 — no stats reload after a failed push (the plan
+  reloads after Push; a conflict means Keitaro changed), and a distinct label when the older week
+  earned $0 (the plan's THIN rule: the change is undefined). Fake profiles stay in memory, as
+  documented. Verification: verified — 307 pytest, 83 vitest, 14 Playwright; mutator 0 survivors
+  on touched files; crapper < 10; dryer clean.
+
 ## Decisions Log
 
 <!-- Owner's hand only. Format: YYYY-MM-DD: context, problem, decision (mark overrides/rejections). -->

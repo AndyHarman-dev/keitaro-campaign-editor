@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import KeyedTtlCache, offers_cache
 from app.keitaro.fake import FakeKeitaro
@@ -15,8 +15,8 @@ from app.keitaro.traffic import OfferProfile, simulate
 
 class TrafficIn(BaseModel):
     campaign_id: int
-    days: int = 30
-    clicks_per_day: int = 1000
+    days: int = Field(default=30, ge=0, le=366)
+    clicks_per_day: int = Field(default=1000, ge=0, le=1_000_000)
     seed: int = 1
     lag: bool = True
     drift: dict[int, float] = {}

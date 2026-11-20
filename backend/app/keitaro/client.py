@@ -158,7 +158,8 @@ class KeitaroClient:
                              "expression": campaign_id}]}
         try:
             data = await self._request("POST", "/report/build", json=body)
-            return [KtReportRow.model_validate(r).to_day_row() for r in data["rows"]]
+            rows = [KtReportRow.model_validate(r) for r in data["rows"]]
+            return [r.to_day_row() for r in rows if r.stream_id is not None]
         except (ValueError, KeyError, TypeError) as exc:  # ValidationError is a ValueError
             raise UnreadableReport(type(exc).__name__) from None
 

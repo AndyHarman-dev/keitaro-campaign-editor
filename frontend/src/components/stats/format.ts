@@ -10,8 +10,11 @@ export const PERIODS: PeriodKey[] = ['today', '7', '14', '30']
 
 export const periodLabel = (p: PeriodKey) => (p === 'today' ? 'Today' : `${p} days`)
 
+/** Two decimals; four for a non-zero amount under a cent, which the backend keeps exact. */
 export function money(value: string | null, currency: string): string {
-  return value === null ? '—' : `${currency}${Number(value).toFixed(2)}`
+  if (value === null) return '—'
+  const n = Number(value)
+  return `${currency}${n.toFixed(n !== 0 && Math.abs(n) < 0.01 ? 4 : 2)}`
 }
 
 export function percent(value: number | null): string {

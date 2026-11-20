@@ -82,11 +82,11 @@ class KtStream(_Kt):
 class KtReportRow(_Kt):
     """One /report/build row grouped by stream, offer and day (vision §5, assumption A1).
 
-    Lenient on purpose: numbers may arrive as strings, a row with no offer may carry null, 0
-    or "". Missing or null measures count as zero.
+    Lenient on purpose: numbers may arrive as strings, a row with no flow or offer may carry
+    null, 0, "0" or "". Missing or null measures count as zero.
     """
 
-    stream_id: int
+    stream_id: int | None  # None: clicks no flow handled; the client drops those rows
     offer_id: int | None = None
     day: date
     clicks: int = 0
@@ -96,10 +96,10 @@ class KtReportRow(_Kt):
     lead_revenue: Decimal = Decimal(0)
     sale_revenue: Decimal = Decimal(0)
 
-    @field_validator("offer_id", mode="before")
+    @field_validator("stream_id", "offer_id", mode="before")
     @classmethod
-    def _no_offer(cls, value: Any) -> Any:
-        return value or None
+    def _none(cls, value: Any) -> Any:
+        return None if value in (None, "", 0, "0") else value
 
     @field_validator("clicks", "leads", "sales", "rejected", mode="before")
     @classmethod

@@ -1,5 +1,6 @@
 """App factory: fake-Keitaro mode for local demos and e2e, and serving the built frontend."""
 
+import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import create_engine
@@ -147,3 +148,8 @@ def test_spa_fallback_stays_out_of_the_openapi_schema(tmp_path):
     (dist / "index.html").write_text("<html>app</html>")
     app = create_app(_settings(tmp_path), frontend_dist=dist)
     assert not any(path.startswith("/{") for path in app.openapi()["paths"])
+
+
+def test_a_misspelt_stats_timezone_is_refused_with_a_clear_message(tmp_path):
+    with pytest.raises(ValueError, match="STATS_TIMEZONE"):
+        _settings(tmp_path, stats_timezone="Europe/Nowhere")

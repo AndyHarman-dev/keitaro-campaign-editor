@@ -30,7 +30,7 @@ def test_report_row_accepts_numbers_or_numeric_strings():
     assert row.to_day_row() == DayRow(7, 12, D2, k(100, 2, 3, 0, "1.10", "0.1"))
 
 
-@pytest.mark.parametrize("missing", [None, 0, ""])
+@pytest.mark.parametrize("missing", [None, 0, "", "0"])
 def test_report_row_without_an_offer_maps_to_none(missing):
     row = KtReportRow.model_validate({"stream_id": 7, "offer_id": missing, "day": "2026-11-19"})
     assert row.to_day_row() == DayRow(7, None, D2, Counts())
@@ -83,12 +83,21 @@ async def test_client_report_error_is_a_keitaro_error():
     assert err.value.status == 403
 
 
+async def test_client_skips_rows_that_belong_to_no_flow():
+    good = {"stream_id": 7, "offer_id": 12, "day": "2026-11-19", "clicks": 5}
+    stray = [{**good, "stream_id": none} for none in (None, 0, "", "0")]
+    kt = KeitaroClient("https://tracker.example", "k" * 32, transport=httpx.MockTransport(
+        lambda _: httpx.Response(200, json={"rows": [good, *stray]})))
+    assert await kt.report(1, D1, D3, "UTC") == [DayRow(7, 12, D2, k(5))]
+    await kt.aclose()
+
+
 @pytest.mark.parametrize("response", [
     httpx.Response(200, json={"total": 0}),
     httpx.Response(200, text="<html>maintenance</html>"),
-    httpx.Response(200, json={"rows": [{"stream_id": None, "day": "2026-11-19"}]}),
+    httpx.Response(200, json={"rows": [{"stream_id": 7, "day": "not a day"}]}),
     httpx.Response(200, json={"rows": "nope"}),
-], ids=["no rows", "not json", "null flow", "rows not a list"])
+], ids=["no rows", "not json", "bad day", "rows not a list"])
 async def test_client_unreadable_report_is_its_own_keitaro_error(response):
     kt = KeitaroClient("https://tracker.example", "k" * 32,
                        transport=httpx.MockTransport(lambda _: response))

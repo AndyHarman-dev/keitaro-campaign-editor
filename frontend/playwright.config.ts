@@ -7,8 +7,10 @@ import { defineConfig, devices } from '@playwright/test'
 // beta off (every existing spec, plus the placeholders check), 8766 runs through the launcher
 // with --stats-beta. Each has its own database file: Playwright starts the servers one after
 // another, and a shared file would be deleted under the first one.
+// STATS_BETA=0 is explicit, so a STATS_BETA=1 in a developer's .env can't turn the beta on for
+// the beta-off server; the launcher's --stats-beta sets it back to 1 for the other one.
 const server = (port: number, db: string, start: string) => {
-  const env = `KEITARO_FAKE=1 DATABASE_URL=sqlite:///../data/${db}`
+  const env = `KEITARO_FAKE=1 STATS_BETA=0 DATABASE_URL=sqlite:///../data/${db}`
   return {
     command: `cd ../backend && mkdir -p ../data && rm -f ../data/${db} && ${env} uv run alembic upgrade head && ${env} ${start} --port ${port}`,
     url: `http://127.0.0.1:${port}/api/health`,

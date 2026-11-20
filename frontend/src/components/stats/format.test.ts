@@ -22,6 +22,13 @@ describe('numbers', () => {
     expect(money(null, '$')).toBe('—')
   })
 
+  it('keeps four decimals for an EPC under a cent, so small EPCs stay apart', () => {
+    expect(money('0.0042', '$')).toBe('$0.0042')
+    expect(money('0.0001', '$')).toBe('$0.0001')
+    expect(money('0.0100', '$')).toBe('$0.01')
+    expect(money('0', '$')).toBe('$0.00')
+  })
+
   it('formats ratios as percent to one decimal', () => {
     expect(percent(0.0525)).toBe('5.3%')
     expect(percent(0)).toBe('0.0%')

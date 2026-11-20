@@ -150,6 +150,26 @@ def test_an_unreadable_report_says_so():
         "Keitaro sent a report this app can't read")
 
 
+def test_a_refresh_drops_every_cached_period_of_that_campaign(stats, fake):
+    fake.record(CID, FLOW, 1, d(-1), k(10))
+    fake.record(CID + 1, FLOW + 5, 1, d(-1), k(10))
+    clicks = lambda cid, p, extra="": stats.get(
+        f"/api/campaigns/{cid}/stats?period={p}{extra}").json()["flows"][0]["totals"]["clicks"]
+    assert (clicks(CID, 7), clicks(CID, 30), clicks(CID + 1, 7)) == (10, 10, 10)
+    fake.record(CID, FLOW, 1, d(-1), k(20))
+    fake.record(CID + 1, FLOW + 5, 1, d(-1), k(20))
+    assert clicks(CID, 30, "&refresh=true") == 20
+    assert clicks(CID, 7) == 20  # switching period right after a push shows fresh numbers
+    assert clicks(CID + 1, 7) == 10  # other campaigns keep their cache
+
+
+def test_traffic_control_refuses_absurd_sizes(tmp_path):
+    api = beta_app(tmp_path)
+    for body in ({"days": -1}, {"days": 400}, {"clicks_per_day": -5},
+                 {"clicks_per_day": 2_000_000}):
+        assert api.post("/api/_fake/traffic", json={"campaign_id": 1, **body}).status_code == 422
+
+
 def test_a_failure_is_not_cached(stats, fake):
     fake.fail_next("POST", "/report/build", 503, "down")
     url = f"/api/campaigns/{CID}/stats?period=7"
@@ -161,6 +181,14 @@ def test_status_is_required_on_every_union_member():
     schema = app.openapi()["components"]["schemas"]
     for name in ("StatsDisabled", "StatsUnavailable", "StatsOk"):
         assert "status" in schema[name]["required"]
+
+
+def test_keyed_cache_drops_matching_keys():
+    cache = KeyedTtlCache(60)
+    for key in [(1, "7"), (1, "30"), (2, "7")]:
+        cache.put(key, key)
+    cache.drop(lambda key: key[0] == 1)
+    assert [cache.get(k) for k in [(1, "7"), (1, "30"), (2, "7")]] == [None, None, (2, "7")]
 
 
 def test_keyed_cache_keeps_keys_apart_and_expires():
