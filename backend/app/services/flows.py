@@ -18,11 +18,11 @@ from app.domain.flow import (
     OfferLink,
     Op,
     diff,
-    effective,
     forget,
     merge_fetch,
     push_plan,
     replay,
+    restage,
     signature,
 )
 from app.keitaro.client import KeitaroClient, KeitaroError
@@ -115,11 +115,11 @@ class FlowService:
         old_base = stored.base if stored else FlowState(rows=())
         pending = stored.pending if stored else []
         base, notes = merge_fetch(old_base, stream.links, archived)
-        working, replay_notes = replay(base, pending)
+        pending, replay_notes = restage(base, pending)
         fresh = StoredFlow(
             stream_id=stream.id, campaign_id=stream.campaign_id, name=stream.name,
             type=stream.type, position=stream.position, summary=summary(stream), base=base,
-            pending=effective(base, pending) if diff(base, working).dirty else [],
+            pending=pending,
             signature=signature(stream.links), fetched_at=datetime.now(UTC),
             version=stored.version if stored else 0,
         )

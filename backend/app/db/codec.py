@@ -10,6 +10,7 @@ from app.domain.flow import (
     OfferRow,
     Op,
     Pin,
+    Rebalance,
     Remove,
     RemovedBy,
     RowStatus,
@@ -23,6 +24,7 @@ _OP_KINDS: dict[str, type] = {
     "add": Add,
     "set_share": SetShare,
     "toggle_pin": TogglePin,
+    "rebalance": Rebalance,
 }
 _KIND_OF = {cls: kind for kind, cls in _OP_KINDS.items()}
 

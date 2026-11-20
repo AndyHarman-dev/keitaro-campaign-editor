@@ -118,7 +118,12 @@ class TogglePin:
     offer_id: int
 
 
-Op = Remove | BringBack | Add | SetShare | TogglePin
+@dataclass(frozen=True)
+class Rebalance:
+    """Staged by a fetch whose shares do not total 100; never sent by the UI."""
+
+
+Op = Remove | BringBack | Add | SetShare | TogglePin | Rebalance
 Result = tuple[FlowState, list[str]]
 
 
@@ -198,6 +203,7 @@ _HANDLERS = {
     Add: _add,
     SetShare: _set_share,
     TogglePin: _toggle_pin,
+    Rebalance: lambda state, op: rebalance(state),
 }
 
 
@@ -227,6 +233,20 @@ def effective(base: FlowState, ops: list[Op]) -> list[Op]:
             kept.append(op)
         state = after
     return kept
+
+
+def restage(base: FlowState, pending: list[Op]) -> tuple[list[Op], list[str]]:
+    """Pending ops on a freshly fetched base. Ops that no longer change anything go. When
+    nothing is left and Keitaro's shares do not total 100, a rebalance is staged instead, so
+    the flow shows as pending and Push saves a valid list."""
+    working, notes = replay(base, pending)
+    if diff(base, working).dirty:
+        return effective(base, pending), notes
+    total = sum(r.share for r in base.rows if r.active)
+    staged = effective(base, [Rebalance()]) if total != 100 else []
+    if staged:
+        notes = [f"Keitaro's shares total {total}%; rebalanced to 100%. Push to save it.", *notes]
+    return staged, notes
 
 
 # --- allocation --------------------------------------------------------------------------

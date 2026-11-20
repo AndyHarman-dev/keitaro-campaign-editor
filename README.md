@@ -132,8 +132,10 @@ curl -X POST localhost:8000/api/_fake/streams/1002/detach/3717    # remove an of
 curl -X POST localhost:8000/api/_fake/offers/3717/archive         # archive an offer
 ```
 
-After a detach, Push is blocked until you Fetch & merge; after an archive, Fetch tags the row
-"archived in Keitaro".
+After a detach, Push is blocked until you Fetch & merge. Fetch shows the offer as "removed in
+Keitaro" and, because Keitaro's remaining shares no longer total 100, stages a rebalance: the
+unpinned offers take up the freed share (pins stay) as a pending change that Push saves. After an
+archive, Fetch tags the row "archived in Keitaro".
 
 ## Tests and quality gates
 

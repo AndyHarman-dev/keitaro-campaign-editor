@@ -84,11 +84,39 @@ def test_unreadable_offer_is_shown_by_id_only(api, fake, cid):
     assert (row["name"], row["preview_url"]) == (None, None)
 
 
-def test_flow_total_is_the_sum_of_active_shares(api, fake, cid):
+def test_fetch_stages_a_rebalance_when_keitaros_shares_do_not_total_100(api, fake, cid):
     flow = offer_flow(editor(api, cid))
     fake.streams[flow["stream_id"]]["offers"][0]["share"] = 60  # Keitaro allows it
     view = api.post(f"/api/campaigns/{cid}/fetch").json()
-    assert offer_flow(view)["total"] == 60
+    flow = offer_flow(view)
+    assert (flow["total"], flow["dirty"], flow["pending_count"]) == (100, True, 1)
+    assert (flow["rows"][0]["base_share"], flow["rows"][0]["change"]) == (60, "share")
+    assert view["notes"] == ["Flow 2: Keitaro's shares total 60%; rebalanced to 100%. Push to save it."]
+    again = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert offer_flow(again)["pending_count"] == 1
+    flow = offer_flow(again)
+    api.post(f"/api/campaigns/{cid}/cancel", json={"versions": {flow["stream_id"]: flow["version"]}})
+    assert offer_flow(editor(api, cid))["total"] == 60  # Cancel shows Keitaro's numbers again
+
+
+def test_offer_removed_in_keitaro_hands_its_share_to_the_unpinned_offers(api, fake, cid):
+    for offer_id in (4242, 5555):
+        fake.add_offer(offer_id, f"Offer {offer_id}")
+    view = editor(api, cid)
+    for offer_id in (3717, 4242, 5555):
+        view = act(api, offer_flow(view), "add", offer_id)
+    view = act(api, offer_flow(view), "set_share", 18813, share=30)
+    view = act(api, offer_flow(view), "set_share", 3717, share=20)
+    view = push_and_view(api, view)
+    assert [r[1] for r in rows(offer_flow(view))] == [30, 20, 25, 25]
+    fake.detach_offer(offer_flow(view)["stream_id"], 5555)
+    flow = offer_flow(api.post(f"/api/campaigns/{cid}/fetch").json())
+    assert rows(flow) == [(18813, 30, "active"), (3717, 20, "active"), (4242, 50, "active"),
+                          (5555, 0, "removed")]
+    assert flow["total"] == 100
+    push(api, flow)
+    assert kt_offers(fake, flow) == [(18813, 30, "active"), (3717, 20, "active"),
+                                     (4242, 50, "active")]
 
 
 def test_unknown_campaign_reports_keitaros_404(api):
@@ -240,8 +268,10 @@ def test_offer_removed_in_keitaro_is_kept_and_can_be_brought_back(api, fake, cid
     view = api.post(f"/api/campaigns/{cid}/fetch").json()
     flow = offer_flow(view)
     assert view["notes"] == [("Flow 2: Offer [3717] was removed from this flow in Keitaro. "
-                             "Bring back + Push re-attaches it.")]
+                             "Bring back + Push re-attaches it."),
+                             "Flow 2: Keitaro's shares total 50%; rebalanced to 100%. Push to save it."]
     assert flow["rows"][1]["removed_by"] == "keitaro"
+    assert flow["rows"][0]["share"] == 100
     flow = offer_flow(act(api, flow, "bring_back", 3717))
     assert flow["rows"][1]["change"] == "restored"
     push(api, flow)
@@ -300,8 +330,10 @@ def test_archived_offer_is_flagged_and_forget_drops_it_locally(api, fake, cid):
     resp = api.post(f"/api/flows/{flow['stream_id']}/forget",
                     json={"version": flow["version"], "offer_id": 3717})
     assert resp.status_code == 200
-    # forgetting is a local base edit: Keitaro still holds 18813 at 50 %, and that is shown
-    assert rows(offer_flow(resp.json())) == [(18813, 50, "active")]
+    # forgetting is a local base edit: Keitaro still holds 18813 at 50 %; 100 % is pending
+    flow = offer_flow(resp.json())
+    assert rows(flow) == [(18813, 100, "active")]
+    assert (flow["rows"][0]["base_share"], flow["pending_count"]) == (50, 1)
     assert [r for r in fake.requests[sent:] if r.method != "GET"] == []  # nothing written
 
 
