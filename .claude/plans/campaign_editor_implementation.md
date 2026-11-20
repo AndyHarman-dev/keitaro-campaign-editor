@@ -641,6 +641,19 @@ fast and locally.
   crash-replayed *SetShare/TogglePin* leaves a pin-only diff (dirty, harmless re-push), while
   Remove/Add/Bring back replay clean. Verification: verified — 61 tests, crapper max 7,
   dryer clean, mutator 53/55 (same 2 equivalent mutants).
+- **2026-11-20 — Phase 3.** Context: typed Keitaro gateway + fake. Actions:
+  `app/keitaro/schemas.py` (boundary parsing; `redirect_url` reads `action_payload` or
+  `action_options.url`), `client.py` rewritten (typed methods, `KeitaroError` with status 0 for
+  unreachable, `clean_archive` deny-list, key only in the header), `fake.py` (`FakeKeitaro` on
+  `httpx.MockTransport`, failure injection, request log, asserts on any clean_archive);
+  `/api/keitaro/ping` moved onto the typed client, its pinned output unchanged;
+  `tests/live/test_contract.py` (marker `live`, excluded by default). Decisions: the fake is a
+  `MockTransport` handler rather than a mounted ASGI app (same effect, less code). Added
+  `pytest-asyncio`. Verification: verified — 82 offline tests; mutator `app/keitaro` 32/32
+  killed (one "uncovered" site is a coverage artefact of a multi-line call); **`pytest -m live`
+  passed once against the real tracker** (create, both flows, unvalidated 60 % share, list
+  replace and empty, archive → 404). Decision 13 (archived-offer detection) remains an
+  assumption: `/offers/deleted` parses, but no archived offer could be observed.
 
 ---
 

@@ -30,7 +30,7 @@ def test_ping_reports_unconfigured_when_key_missing(client):
 @respx.mock
 def test_ping_counts_campaigns_when_reachable(client):
     respx.get("https://tracker.example/admin_api/v1/campaigns").mock(
-        return_value=httpx.Response(200, json=[{"id": 1}, {"id": 2}])
+        return_value=httpx.Response(200, json=[{"id": 1, "name": "a"}, {"id": 2, "name": "b"}])
     )
     assert client(_settings()).get("/api/keitaro/ping").json() == {
         "configured": True, "reachable": True, "status_code": 200, "campaigns": 2,
