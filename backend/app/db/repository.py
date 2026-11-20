@@ -58,6 +58,9 @@ class FlowRepository:
         query = select(FlowRecord).where(FlowRecord.campaign_id == campaign_id)
         return [_to_stored(r) for r in self._s.scalars(query.order_by(FlowRecord.position))]
 
+    def delete(self, stream_id: int) -> None:
+        self._s.query(FlowRecord).filter_by(stream_id=stream_id).delete()
+
     def save(self, flow: StoredFlow) -> StoredFlow:
         """Writes `flow` if the stored version is still `flow.version`; returns it bumped."""
         if flow.version == 0:

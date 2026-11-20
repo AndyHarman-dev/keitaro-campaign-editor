@@ -14,15 +14,18 @@ from sqlalchemy.orm import Session
 from app.db.repository import FlowRepository, StaleVersion, StoredFlow
 from app.domain.flow import (
     FlowState,
+    InvalidPush,
+    OfferLink,
     Op,
     diff,
+    effective,
     forget,
     merge_fetch,
     push_plan,
     replay,
     signature,
 )
-from app.keitaro.client import KeitaroClient
+from app.keitaro.client import KeitaroClient, KeitaroError
 from app.keitaro.schemas import KtCampaign, KtStream
 
 __all__ = ["Conflict", "FlowNotFound", "FlowService", "StaleVersion"]
@@ -92,11 +95,20 @@ class FlowService:
         campaign = await self._kt.get_campaign(campaign_id)
         streams = await self._kt.list_streams(campaign_id)
         archived = await self._kt.list_deleted_offer_ids()
-        notes: list[str] = []
+        notes = self._drop_deleted(campaign_id, {s.id for s in streams})
         for stream in streams:
             notes += self._merge(stream, archived)
         self._s.commit()
         return Outcome(campaign, self._repo.for_campaign(campaign_id), notes)
+
+    def _drop_deleted(self, campaign_id: int, live: set[int]) -> list[str]:
+        """Flows Keitaro no longer lists leave the editor, pending edits included."""
+        notes = []
+        for gone in [f for f in self._repo.for_campaign(campaign_id) if f.stream_id not in live]:
+            self._repo.delete(gone.stream_id)
+            dropped = "; its pending changes were dropped" if gone.pending else ""
+            notes.append(f"{gone.name} was deleted in Keitaro{dropped}.")
+        return notes
 
     def _merge(self, stream: KtStream, archived: set[int]) -> list[str]:
         stored = self._repo.get(stream.id)
@@ -107,7 +119,7 @@ class FlowService:
         fresh = StoredFlow(
             stream_id=stream.id, campaign_id=stream.campaign_id, name=stream.name,
             type=stream.type, position=stream.position, summary=summary(stream), base=base,
-            pending=pending if diff(base, working).dirty else [],
+            pending=effective(base, pending) if diff(base, working).dirty else [],
             signature=signature(stream.links), fetched_at=datetime.now(UTC),
             version=stored.version if stored else 0,
         )
@@ -152,19 +164,27 @@ class FlowService:
         if signature(current.links) != stored.signature:
             raise Conflict(f"{stored.name} was changed in Keitaro since your last fetch.")
         await self._kt.put_stream_offers(stream_id, plan)
-        after = await self._kt.get_stream(stream_id)
-        base, _ = merge_fetch(working, after.links, set())
-        self._repo.save(replace(stored, base=base, pending=[], signature=signature(after.links),
+        stored_now = await self._reread(stream_id, plan)
+        base, _ = merge_fetch(working, stored_now, set())
+        self._repo.save(replace(stored, base=base, pending=[], signature=signature(stored_now),
                                 fetched_at=datetime.now(UTC)))
         self._s.commit()
-        if signature(after.links) != signature(plan):
+        if signature(stored_now) != signature(plan):
             # Plan Phase 6 tripwire: Keitaro normalised what we sent. Its version is kept.
             return [(f"{stored.name}: Keitaro stored a different offer list than was sent; "
                     "showing what Keitaro has.")]
         return []
 
+    async def _reread(self, stream_id: int, sent: list[OfferLink]) -> list[OfferLink]:
+        """What Keitaro holds after our PUT. If the re-read fails, the PUT succeeded, so what
+        was sent is the best record; the next fetch corrects it if Keitaro differs."""
+        try:
+            return (await self._kt.get_stream(stream_id)).links
+        except KeitaroError:
+            return sent
+
     async def push_all(self, versions: dict[int, int]) -> list[str]:
-        """Pushes each flow on its own; a conflict in one does not stop the others."""
+        """Pushes each flow on its own; a failure in one is reported and the rest go on."""
         for stream_id, version in versions.items():
             self._load(stream_id, version)
         notes = []
@@ -173,4 +193,6 @@ class FlowService:
                 notes += await self.push(stream_id, version)
             except Conflict as exc:
                 notes.append(str(exc))
+            except (InvalidPush, KeitaroError) as exc:
+                notes.append(f"{self._repo.get(stream_id).name}: {exc}")
         return notes

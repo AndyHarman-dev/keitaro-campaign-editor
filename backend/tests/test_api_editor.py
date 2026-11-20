@@ -358,3 +358,85 @@ def test_push_reports_when_keitaro_stores_something_else(api, fake, cid, monkeyp
     assert body["notes"] == [("Flow 2: Keitaro stored a different offer list than was sent; "
                              "showing what Keitaro has.")]
     assert offer_flow(body)["dirty"] is False
+
+
+
+def test_push_all_reports_an_invalid_flow_and_still_pushes_the_others(api, fake, cid):
+    _second_offer_flow(fake, cid)
+    view = editor(api, cid)
+    view = act(api, offer_flow(view, "Flow 2"), "add", 3717)
+    view = act(api, offer_flow(view, "Flow 3"), "remove", 3717)
+    versions = {str(f["stream_id"]): f["version"] for f in view["flows"]}
+    resp = api.post(f"/api/campaigns/{cid}/push", json={"versions": versions})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert [n for n in body["notes"] if n.startswith("Flow 3: ")] != []
+    assert offer_flow(body, "Flow 2")["dirty"] is False
+    assert offer_flow(body, "Flow 3")["dirty"] is True
+
+
+def test_push_all_reports_a_keitaro_error_and_still_pushes_the_others(api, fake, cid):
+    _second_offer_flow(fake, cid)
+    view = editor(api, cid)
+    view = act(api, offer_flow(view, "Flow 2"), "add", 3717)
+    view = act(api, offer_flow(view, "Flow 3"), "add", 18813)
+    fake.fail_next("PUT", f"/streams/{offer_flow(view, 'Flow 3')['stream_id']}", 500, "Boom")
+    versions = {str(f["stream_id"]): f["version"] for f in view["flows"]}
+    body = api.post(f"/api/campaigns/{cid}/push", json={"versions": versions}).json()
+    assert "Flow 3: Keitaro answered 500: Boom" in body["notes"]
+    assert offer_flow(body, "Flow 2")["dirty"] is False
+    assert offer_flow(body, "Flow 3")["dirty"] is True
+
+
+def test_failed_reread_after_a_successful_put_keeps_what_was_sent(api, fake, cid, monkeypatch):
+    flow = offer_flow(act(api, offer_flow(editor(api, cid)), "add", 3717))
+    real = fake._put_stream
+
+    def put_then_break_reads(request, match):
+        fake.fail_next("GET", f"/streams/{flow['stream_id']}", 504, "Gateway timeout")
+        return real(request, match)
+
+    fake._routes = [(m, p, put_then_break_reads if h == real else h) for m, p, h in fake._routes]
+    resp = push(api, flow)
+    assert resp.status_code == 200, resp.text
+    after = offer_flow(resp.json())
+    assert (after["dirty"], rows(after)) == (False, [(18813, 50, "active"), (3717, 50, "active")])
+    after = offer_flow(act(api, after, "set_share", 3717, share=70))
+    assert push(api, after).status_code == 200
+    assert kt_offers(fake, after) == [(18813, 30, "active"), (3717, 70, "active")]
+
+
+def test_flow_deleted_in_keitaro_leaves_the_editor_on_fetch(api, fake, cid):
+    _second_offer_flow(fake, cid)
+    view = editor(api, cid)
+    act(api, offer_flow(view, "Flow 3"), "add", 18813)
+    del fake.streams[offer_flow(view, "Flow 3")["stream_id"]]
+    body = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert [f["name"] for f in body["flows"]] == ["Flow 1", "Flow 2"]
+    assert body["notes"] == ["Flow 3 was deleted in Keitaro; its pending changes were dropped."]
+
+
+def test_flow_deleted_in_keitaro_without_edits_leaves_quietly(api, fake, cid):
+    _second_offer_flow(fake, cid)
+    view = editor(api, cid)
+    del fake.streams[offer_flow(view, "Flow 3")["stream_id"]]
+    body = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert body["notes"] == ["Flow 3 was deleted in Keitaro."]
+
+
+def test_fetch_drops_pending_ops_that_no_longer_do_anything(api, fake, cid):
+    view = act(api, offer_flow(editor(api, cid)), "add", 3717)
+    view = push_and_view(api, view)
+    view = act(api, offer_flow(view), "remove", 3717)
+    view = act(api, offer_flow(view), "set_share", 18813, share=100)
+    fake.detach_offer(offer_flow(view)["stream_id"], 3717)
+    first = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert any("3717" in n for n in first["notes"])
+    second = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert second["notes"] == []
+
+
+def push_and_view(api, view: dict) -> dict:
+    resp = push(api, offer_flow(view))
+    assert resp.status_code == 200, resp.text
+    return resp.json()

@@ -218,6 +218,17 @@ def replay(base: FlowState, ops: list[Op]) -> Result:
     return state, notes
 
 
+def effective(base: FlowState, ops: list[Op]) -> list[Op]:
+    """The ops that still change something when replayed on `base`, in order."""
+    kept, state = [], base
+    for op in ops:
+        after, _ = apply(state, op)
+        if after != state:
+            kept.append(op)
+        state = after
+    return kept
+
+
 # --- allocation --------------------------------------------------------------------------
 
 

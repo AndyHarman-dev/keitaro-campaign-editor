@@ -16,6 +16,7 @@ from app.domain.flow import (
     TogglePin,
     apply,
     diff,
+    effective,
     forget,
     push_plan,
     replay,
@@ -325,3 +326,17 @@ def test_push_plan_refuses_shares_that_do_not_total_100():
 def test_push_plan_refuses_an_empty_flow():
     with pytest.raises(InvalidPush):
         push_plan(FlowState(rows=(), next_pin_seq=1))
+
+
+# --- effective ops: what a pending list still does -----------------------------------------
+
+
+def test_effective_keeps_only_ops_that_changed_the_state_where_they_ran():
+    base = flow(34, 33, 33)
+    ops = [Remove(2), Remove(2), SetShare(1, 50), BringBack(3)]
+    assert effective(base, ops) == [Remove(2), SetShare(1, 50)]
+    assert replay(base, effective(base, ops))[0] == replay(base, ops)[0]
+
+
+def test_effective_of_nothing_is_nothing():
+    assert effective(flow(100), []) == []
