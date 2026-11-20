@@ -90,10 +90,11 @@ Connectivity check: `http://127.0.0.1:8000/api/keitaro/ping`.
 `KEITARO_FAKE=1` swaps Keitaro for an in-process fake, so no tracker or API key is needed. Use it
 to try what a real key may not allow, such as share edits across several offers.
 
-Terminal 1, from the repo root (backend on the fake, with its own database `data/fake.db`):
+Terminal 1, from the repo root (backend on the fake, with its own database `data/fake.db` and
+the fake's data in `data/fake-keitaro.json`):
 
 ```bash
-cd backend && mkdir -p ../data && rm -f ../data/fake.db && export KEITARO_FAKE=1 DATABASE_URL="sqlite:///$(cd .. && pwd)/data/fake.db" && uv run alembic upgrade head && uv run uvicorn app.main:app
+cd backend && mkdir -p ../data && export KEITARO_FAKE=1 DATABASE_URL="sqlite:///$(cd .. && pwd)/data/fake.db" KEITARO_FAKE_STATE="$(cd .. && pwd)/data/fake-keitaro.json" && uv run alembic upgrade head && uv run uvicorn app.main:app --reload
 ```
 
 Terminal 2, from the repo root:
@@ -112,11 +113,15 @@ What the fake holds:
 
 Keep in mind:
 
-- The fake lives in memory and starts from the demo data on every start. The command above wipes
-  `data/fake.db` each time so the database and the fake stay in step; your real `data/app.db`
-  is never touched.
-- Don't add `--reload`: a code change would restart the fake but keep the database, and the
-  editor would show flows the fake no longer has.
+- **The fake's data is saved in `data/fake-keitaro.json`** (set by `KEITARO_FAKE_STATE`). It is
+  written after every change (create, push, archive, the controls below) and loaded on start, so
+  campaigns you create survive restarts, including `--reload` restarts. If the file is missing,
+  the fake starts from the demo data and creates it.
+- **Start over** by stopping the backend and deleting both files, then running the command again:
+  `rm data/fake.db data/fake-keitaro.json`. Delete them together: the database remembers flows
+  the JSON file holds.
+- Without `KEITARO_FAKE_STATE` the fake lives in memory only and starts from the demo data every
+  time (the e2e tests run that way). Your real `data/app.db` is never touched.
 
 Simulate someone editing Keitaro directly (these endpoints exist only in fake mode):
 
