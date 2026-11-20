@@ -182,6 +182,18 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 - **`DELETE /campaigns/{id}` archives.** The campaign leaves the active list and `GET` by id
   returns 404. `GET /campaigns/deleted` is slow (it timed out at 30 s).
 
+### Offer write test (2026-11-19)
+
+- `POST /offers` returns **403** for this key, even with a minimal body (`{"name": …}`).
+- A no-op `PUT /offers/{id}` on an offer the key *can* read also returns **403**.
+- Conclusion: **offers are read-only for this key.**
+  - Archive, restore and recreate could not be exercised, because nothing could be created to
+    archive, and we will not archive a real offer.
+  - Re-attaching an existing offer to a flow works. It is a flow write, proven by the write
+    test above.
+- Never call `/offers/clean_archive` or `/campaigns/clean_archive`: they purge the archive for
+  the whole tracker.
+
 ---
 
 ## 5. Decisions settled (scope interview, 2026-11-19)
@@ -208,8 +220,10 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
       live tracker*.
 - [x] Redirect URL field and `PUT /streams/{id}` semantics: settled by a write test, see §4
       *Write test*.
-- [ ] Bring back for a purged offer: recreating offers is probably not permitted for this key
-      (see §4). Fallback: show "cannot be recreated" instead of the button.
+- [ ] Bring back when the **offer itself** was archived or purged in Keitaro: the current key
+      has read-only access to offers (see §4 *Offer write test*), so restore and recreate both
+      fail. Proposed: the row shows "Offer archived in Keitaro, cannot be brought back with this
+      API key". The code path stays in place for a key with offer write rights.
 - [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
       Bring back? Default: the pin is kept, dormant, and returns on Bring back; auto-unpin
       applies if the numbers no longer work.
