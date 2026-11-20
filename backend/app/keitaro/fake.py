@@ -30,6 +30,7 @@ from typing import Any
 import httpx
 
 from app.domain.stats import Counts
+from app.keitaro.traffic import OfferProfile, default_profile
 
 Handler = Callable[[httpx.Request, re.Match[str]], httpx.Response]
 TrafficKey = tuple[int, int, int | None, date]  # campaign, flow (stream), offer, day
@@ -60,6 +61,7 @@ class FakeKeitaro:
         self.groups: list[dict[str, Any]] = []
         self.sources: list[dict[str, Any]] = []
         self.traffic: dict[TrafficKey, Counts] = {}
+        self.profiles: dict[int, OfferProfile] = {}  # overrides of default_profile, in memory
         self.requests: list[httpx.Request] = []
         self._failures: list[tuple[str, str, int, str]] = []
         self._next_id = 1000
@@ -143,6 +145,9 @@ class FakeKeitaro:
                counts: Counts) -> None:
         """States one day's exact counts for a flow and offer, replacing what was there."""
         self.traffic[(campaign_id, stream_id, offer_id, day)] = counts
+
+    def profile(self, offer_id: int) -> OfferProfile:
+        return self.profiles.get(offer_id) or default_profile(offer_id)
 
     def flows_of(self, campaign_id: int) -> list[dict[str, Any]]:
         return [s for s in self.streams.values() if s["campaign_id"] == campaign_id]
