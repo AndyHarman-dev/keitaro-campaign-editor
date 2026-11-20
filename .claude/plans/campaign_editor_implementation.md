@@ -751,6 +751,39 @@ fast and locally.
   Playwright specs** (create via form, add/rebalance/pin/remove/bring back/push, blur
   applies, conflict → Fetch & merge, archived → Remove, screenshots reviewed at 1280 px and
   390 px), `pytest -m live` 2/2, `scripts/check.sh` (full, with mutation) green.
+- **2026-11-20 — Phase 10.** Context: independent review (`/code-review medium
+  feat/campaign-editor`, Sonnet, findings only; it diffed `main...HEAD`, 98 files: our branch
+  plus the scaffold it sits on, so the scope was right). 9 findings, each triaged:
+  1. *Applied.* Create saga reported "Nothing was created" while an unarchivable half-made
+     campaign stayed live; non-Keitaro errors skipped compensation. `KeitaroFailure.campaign_id`,
+     the UI names the leftover campaign, and any exception after create archives.
+  2. *Applied.* Push all aborted mid-way on InvalidPush / KeitaroError after earlier flows
+     were committed. Both are now per-flow notes.
+  3. *Applied.* Editor requests raced (blur-applied share + Push sent the same version).
+     `SerialQueue` runs requests one at a time, each built from the latest view. Pinned by
+     a Vitest test with a held response and a Playwright spec that fails on the old code.
+  4. *Applied in part.* A failed re-read after a successful PUT left the old signature, so
+     the next push raised a false conflict. It now falls back to the list we sent
+     (`signature` has no link ids, so this matches what Keitaro should hold). The
+     double-click case is covered by fix 3. Not done: claiming the version before the PUT.
+     Two tabs pushing the same flow at the same moment can still both reach Keitaro (the
+     second then reports "stale"). Claiming the version would turn every failed PUT into a
+     forced Reload. The app is single-user and local, so this was left as a known edge.
+  5. *Applied.* Flows deleted in Keitaro never left the editor. Fetch now drops them with a
+     note that says whether pending edits were lost.
+  6. *Escalated to the user.* A pin-only change marks the flow dirty, and Push sends an
+     identical list. This reopens decision 4 ("pins are local only") and what
+     `pending_count` counts.
+  7. *Applied.* Editing the offer text after a pick kept the old pick (create form and
+     the flow Add box). `OfferPicker.onClear`.
+  8. *Applied.* Show all offers counted a removed row as "in Flow X". Only active rows
+     count; Add on a removed row brings it back (domain `_add`).
+  9. *Applied.* Ops made pointless by a Keitaro change repeated their note on every fetch.
+     Domain `effective()` keeps only ops that still act.
+  Also: a mutation run found Flow 1/2 positions unasserted, now pinned. Verification:
+  verified. 162 backend tests (11 new), 58 frontend tests (10 new), Playwright 7/7,
+  `scripts/check.sh` full green (backend 149/149 killed and 7 multi-line coverage
+  artefacts, frontend 171/171).
 
 ---
 
