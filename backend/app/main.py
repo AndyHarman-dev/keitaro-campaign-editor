@@ -11,7 +11,7 @@ from app.config import REPO_ROOT, Settings
 from app.config import get_settings as load_settings
 from app.db.session import session_factory
 from app.keitaro.client import KeitaroClient, KeitaroError
-from app.keitaro.seed import seeded_fake, with_fake_defaults
+from app.keitaro.seed import fake_tracker, with_fake_defaults
 
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
@@ -38,7 +38,7 @@ async def keitaro_ping(settings: Config, kt: Keitaro) -> dict:
 
 def _keitaro_factory(app: FastAPI, settings: Settings) -> Callable[[], KeitaroClient]:
     if settings.keitaro_fake:
-        fake = seeded_fake(settings)
+        fake = fake_tracker(settings)
         app.include_router(fake_controls(fake))
         return lambda: KeitaroClient("https://fake.invalid", "fake", transport=fake.transport)
     key = settings.keitaro_api_key.get_secret_value()

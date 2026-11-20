@@ -21,6 +21,18 @@ def with_fake_defaults(settings: Settings) -> Settings:
     })
 
 
+def fake_tracker(settings: Settings) -> FakeKeitaro:
+    """The fake saved at KEITARO_FAKE_STATE when that file exists; otherwise a fresh seed,
+    saved there from the start when the setting is given."""
+    path = settings.keitaro_fake_state
+    if path is not None and path.exists():
+        return FakeKeitaro.load(path)
+    fake = seeded_fake(settings)
+    fake.state_file = path
+    fake.save()
+    return fake
+
+
 def seeded_fake(settings: Settings) -> FakeKeitaro:
     """`settings` must already carry default names (see with_fake_defaults)."""
     fake = FakeKeitaro()

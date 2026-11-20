@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{REPO_ROOT / 'data' / 'app.db'}"
     keitaro_fake: bool = Field(
         default=False, description="Use the in-process fake tracker (demos and e2e; no key needed)")
+    keitaro_fake_state: Path | None = Field(
+        default=None, description="Fake mode: JSON file the fake tracker is saved to and loaded from")
 
     @property
     def keitaro_configured(self) -> bool:

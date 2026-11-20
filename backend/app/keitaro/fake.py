@@ -8,14 +8,18 @@ behaviour the app depends on:
 - DELETE /campaigns/{id} archives: GET then answers 404 and the list leaves it out.
 - Offers this key may not read answer 403 and are missing from GET /offers.
 - Any clean_archive request fails the test loudly (the client must never send one).
+
+With a `state_file`, every change is saved there and `FakeKeitaro.load` picks it up again, so a
+local demo keeps its campaigns across restarts. Tests run without one, in memory.
 """
 
 from __future__ import annotations
 
-import itertools
 import json
+import os
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -32,7 +36,8 @@ def _err(status: int, message: str) -> httpx.Response:
 
 
 class FakeKeitaro:
-    def __init__(self) -> None:
+    def __init__(self, state_file: Path | None = None) -> None:
+        self.state_file = state_file
         self.campaigns: dict[int, dict[str, Any]] = {}
         self.streams: dict[int, dict[str, Any]] = {}
         self.offers: dict[int, dict[str, Any]] = {}
@@ -43,7 +48,7 @@ class FakeKeitaro:
         self.sources: list[dict[str, Any]] = []
         self.requests: list[httpx.Request] = []
         self._failures: list[tuple[str, str, int, str]] = []
-        self._ids = itertools.count(1000)
+        self._next_id = 1000
         self._routes: list[tuple[str, re.Pattern[str], Handler]] = [
             ("GET", re.compile(r"/campaigns"), self._list_campaigns),
             ("POST", re.compile(r"/campaigns"), self._create_campaign),
@@ -60,6 +65,36 @@ class FakeKeitaro:
             ("GET", re.compile(r"/traffic_sources"), lambda r, m: _ok(self.sources)),
         ]
 
+    def _new_id(self) -> int:
+        self._next_id += 1
+        return self._next_id - 1
+
+    # --- state file --------------------------------------------------------------------
+
+    def save(self) -> None:
+        """Writes the tracker to `state_file` (no-op without one); a crash mid-write keeps the old file."""
+        if self.state_file is None:
+            return
+        state = {"next_id": self._next_id, "campaigns": list(self.campaigns.values()),
+                 "streams": list(self.streams.values()), "offers": list(self.offers.values()),
+                 "unreadable": sorted(self.unreadable), "deleted_offers": sorted(self.deleted_offers),
+                 "domains": self.domains, "groups": self.groups, "sources": self.sources}
+        partial = self.state_file.with_suffix(".tmp")
+        partial.write_text(json.dumps(state, indent=1))
+        os.replace(partial, self.state_file)
+
+    @classmethod
+    def load(cls, state_file: Path) -> FakeKeitaro:
+        state = json.loads(state_file.read_text())
+        fake = cls(state_file)
+        fake._next_id = state["next_id"]
+        for attr in ("campaigns", "streams", "offers"):
+            setattr(fake, attr, {item["id"]: item for item in state[attr]})
+        fake.unreadable = set(state["unreadable"])
+        fake.deleted_offers = set(state["deleted_offers"])
+        fake.domains, fake.groups, fake.sources = state["domains"], state["groups"], state["sources"]
+        return fake
+
     @property
     def transport(self) -> httpx.MockTransport:
         return httpx.MockTransport(self.handle)
@@ -75,6 +110,7 @@ class FakeKeitaro:
 
     def archive_offer(self, offer_id: int) -> None:
         self.deleted_offers.add(offer_id)
+        self.save()
 
     def fail_next(self, method: str, path: str, status: int, message: str) -> None:
         """The next `method path` request answers `status` with Keitaro's error body."""
@@ -84,6 +120,7 @@ class FakeKeitaro:
         """What a person removing the offer in Keitaro's UI does."""
         stream = self.streams[stream_id]
         stream["offers"] = [o for o in stream["offers"] if o["offer_id"] != offer_id]
+        self.save()
 
     def flows_of(self, campaign_id: int) -> list[dict[str, Any]]:
         return [s for s in self.streams.values() if s["campaign_id"] == campaign_id]
@@ -100,7 +137,10 @@ class FakeKeitaro:
                 return _err(status, message)
         for method, pattern, handler in self._routes:
             if method == request.method and (match := pattern.fullmatch(path)):
-                return handler(request, match)
+                response = handler(request, match)
+                if method != "GET":
+                    self.save()
+                return response
         return _err(404, f"no route {request.method} {path}")
 
     # --- campaigns ---------------------------------------------------------------------
@@ -116,7 +156,7 @@ class FakeKeitaro:
         body = json.loads(request.content)
         if not body.get("name") or not body.get("alias"):
             return _err(400, "name and alias are required")
-        campaign = {"id": next(self._ids), "state": "active", **body,
+        campaign = {"id": self._new_id(), "state": "active", **body,
                     "group": self._name(self.groups, body.get("group_id")),
                     "domain": self._domain_url(body.get("domain_id"))}
         self.campaigns[campaign["id"]] = campaign
@@ -151,7 +191,7 @@ class FakeKeitaro:
     def _links(self, stream_id: int, offers: list[dict[str, Any]],
                keep: list[dict[str, Any]]) -> list[dict[str, Any]]:
         old = {o["offer_id"]: o["id"] for o in keep}
-        return [{"id": old.get(o["offer_id"]) or next(self._ids), "stream_id": stream_id,
+        return [{"id": old.get(o["offer_id"]) or self._new_id(), "stream_id": stream_id,
                  "offer_id": o["offer_id"], "share": o["share"],
                  "state": o.get("state", "active")} for o in offers]
 
@@ -159,7 +199,7 @@ class FakeKeitaro:
         body = json.loads(request.content)
         if body.get("campaign_id") not in self.campaigns:
             return _err(400, "campaign_id is invalid")
-        sid = next(self._ids)
+        sid = self._new_id()
         stream = {"filters": [], "action_options": None, "action_payload": None, **body,
                   "id": sid, "state": "active", "weight": None}
         stream["offers"] = self._links(sid, body.get("offers", []), [])
