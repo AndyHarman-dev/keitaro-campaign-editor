@@ -204,7 +204,7 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 | Domain / group / source | **Defaults from `.env`, overridable** in a collapsed "Advanced" section of the create form, with dropdowns loaded from the API. |
 | Frontend | **React + Vite + TypeScript.** In production, FastAPI serves the built bundle. |
 | Local DB | **SQLite**, schema managed by Alembic. |
-| Bring back | Re-attach the offer to the flow. If the global offer was archived, restore it first. If it was purged, recreate it from our snapshot. |
+| Bring back | **Offer removed from the flow** (it still exists in Keitaro): Bring back + Push re-attaches it. **Offer itself archived or deleted in Keitaro**: the key cannot restore or recreate offers, so the row is tagged "archived in Keitaro · can't be restored", has no Bring back, and **Remove** takes it off the list for good (local only, nothing sent to Keitaro). |
 | Share editing | The % is **editable inline**. Typing a value **auto-pins** that offer, and the unpinned offers rebalance around it. |
 | Push conflict | **Block and re-fetch.** If the flow changed in Keitaro since our Fetch, Push is refused. Fetch merges the change and keeps pending edits on top. The user then pushes again. |
 | Pin limits | **Auto-unpin**: when pins make the numbers impossible (pinned > 100, or everything pinned and total ≠ 100), the oldest pin is released automatically and the user is told which. |
@@ -220,10 +220,6 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
       live tracker*.
 - [x] Redirect URL field and `PUT /streams/{id}` semantics: settled by a write test, see §4
       *Write test*.
-- [ ] Bring back when the **offer itself** was archived or purged in Keitaro: the current key
-      has read-only access to offers (see §4 *Offer write test*), so restore and recreate both
-      fail. Proposed: the row shows "Offer archived in Keitaro, cannot be brought back with this
-      API key". The code path stays in place for a key with offer write rights.
 - [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
       Bring back? Default: the pin is kept, dormant, and returns on Bring back; auto-unpin
       applies if the numbers no longer work.
