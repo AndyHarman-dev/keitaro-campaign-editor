@@ -135,6 +135,12 @@ def test_fake_filters_campaigns_with_in_list(fake):
     assert rows["rows"] == [{"campaign_id": 2, "clicks": 1000}]
 
 
+def test_fake_without_a_campaign_filter_reads_every_campaign(fake):
+    rows = build(fake, range={"from": "2026-11-18", "to": "2026-11-20", "timezone": "UTC"},
+                 dimensions=[], measures=["clicks"], filters=[]).json()["rows"]
+    assert rows == [{"clicks": 1042}]
+
+
 def test_fake_rejects_an_unknown_column_like_keitaro(fake):
     resp = build(fake, range={"from": "2026-11-18", "to": "2026-11-20", "timezone": "UTC"},
                  dimensions=["stream_id"], measures=["epc_confirmed_x"], filters=CAMPAIGN_1)

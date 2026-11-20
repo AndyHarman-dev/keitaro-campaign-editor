@@ -153,17 +153,27 @@ class FakeKeitaro:
         self.requests.append(request)
         path = request.url.path.removeprefix("/admin_api/v1").rstrip("/") or "/"
         assert "clean_archive" not in path.lower(), "clean_archive must never be called"
-        for i, (method, fpath, status, message) in enumerate(self._failures):
-            if method == request.method and fpath == path:
-                del self._failures[i]
-                return _err(status, message)
+        failure = self._take_failure(request.method, path)
+        if failure is not None:
+            return failure
         for method, pattern, handler in self._routes:
             if method == request.method and (match := pattern.fullmatch(path)):
-                response = handler(request, match)
-                if method != "GET" and (method, path) not in _READS:
-                    self.save()
-                return response
+                return self._run(handler, request, match, path)
         return _err(404, f"no route {request.method} {path}")
+
+    def _take_failure(self, method: str, path: str) -> httpx.Response | None:
+        for i, (fmethod, fpath, status, message) in enumerate(self._failures):
+            if (fmethod, fpath) == (method, path):
+                del self._failures[i]
+                return _err(status, message)
+        return None
+
+    def _run(self, handler: Handler, request: httpx.Request, match: re.Match[str],
+             path: str) -> httpx.Response:
+        response = handler(request, match)
+        if request.method != "GET" and (request.method, path) not in _READS:
+            self.save()
+        return response
 
     # --- campaigns ---------------------------------------------------------------------
 
