@@ -30,3 +30,13 @@ dist/
 
 # design canvas scratch (published as an artifact)
 .claude/design-canvas/
+
+# quality tooling output
+.metrics/
+target/
+coverage/
+lcov.info
+.coverage
+coverage.xml
+test-results/
+playwright-report/

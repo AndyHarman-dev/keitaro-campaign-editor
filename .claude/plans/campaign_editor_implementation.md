@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: InProgress
 ---
 
 # Implementation plan — Keitaro Campaign Editor
