@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         default=False, description="Use the in-process fake tracker (demos and e2e; no key needed)")
     keitaro_fake_state: Path | None = Field(
         default=None, description="Fake mode: JSON file the fake tracker is saved to and loaded from")
+    stats_beta: bool = Field(
+        default=False, description="Show stats & trends (beta): `python -m app --stats-beta`")
+    stats_timezone: str = Field(default="UTC", description="Timezone that report days follow")
+    stats_currency: str = Field(default="$", description="Currency sign shown with money")
     allowed_hosts: list[str] = Field(
         default=["localhost", "127.0.0.1"],
         description="Host names the API answers to; add a LAN address to open it from another device")

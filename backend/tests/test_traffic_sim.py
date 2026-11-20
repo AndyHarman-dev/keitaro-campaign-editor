@@ -65,10 +65,10 @@ def test_clicks_follow_the_current_shares_exactly_and_skip_the_redirect_flow():
 
 
 def test_paused_and_zero_share_offers_get_no_clicks():
-    fake, cid, sid = tracker((1, 50), (2, 50), (3, 0))
+    fake, cid, sid = tracker((1, 50), (2, 50), (3, 0), (4, 1))
     fake.streams[sid]["offers"][1]["state"] = "paused"
     simulate(fake, cid, 1, 100, today=TODAY, seed=1)
-    assert {o for (c, s, o, d) in fake.traffic} == {1}
+    assert {o for (c, s, o, d) in fake.traffic} == {1, 4}  # a 1% share still gets clicks
 
 
 def test_a_flow_whose_offers_are_all_at_zero_gets_no_traffic():

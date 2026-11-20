@@ -14,7 +14,7 @@ def _settings(tmp_path, **extra) -> Settings:
     url = f"sqlite:///{tmp_path / 'app.db'}"
     Base.metadata.create_all(create_engine(url))
     fields = {"_env_file": None, "database_url": url, "keitaro_base_url": "https://tracker.example",
-              "keitaro_api_key": SecretStr("")}
+              "keitaro_api_key": SecretStr(""), "stats_beta": False}
     return Settings(**(fields | extra))
 
 

@@ -1,7 +1,8 @@
 """FastAPI dependencies. create_app() puts what they hand out on app.state; tests may override."""
 
 import time
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Hashable, Iterator
+from datetime import date
 from typing import Annotated, Any
 
 from fastapi import Depends, Request
@@ -11,7 +12,8 @@ from app.config import Settings
 from app.keitaro.client import KeitaroClient
 from app.keitaro.schemas import KtOffer
 
-__all__ = ["Config", "Db", "Keitaro", "cached_offers", "get_keitaro", "get_session", "get_settings",
+__all__ = ["Config", "Db", "Keitaro", "KeyedTtlCache", "StatsCache", "Today", "cached_offers",
+           "get_keitaro", "get_session", "get_settings", "get_stats_cache", "get_today",
            "offers_cache"]
 
 
@@ -32,9 +34,19 @@ def get_session(request: Request) -> Iterator[Session]:
         yield session
 
 
+def get_today(request: Request) -> date:
+    """Today in the configured stats timezone; tests override it with a fixed date."""
+    return request.app.state.today()
+
+
+def get_stats_cache(request: Request) -> "KeyedTtlCache":
+    return request.app.state.stats_cache
+
+
 Keitaro = Annotated[KeitaroClient, Depends(get_keitaro)]
 Db = Annotated[Session, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
+Today = Annotated[date, Depends(get_today)]
 
 
 class TtlCache:
@@ -57,6 +69,27 @@ class TtlCache:
     def clear(self) -> None:
         self._at = None
 
+
+class KeyedTtlCache:
+    """One TtlCache per key, e.g. stats per (campaign, period)."""
+
+    def __init__(self, ttl_seconds: float, clock: Callable[[], float] = time.monotonic):
+        self._ttl = ttl_seconds
+        self._clock = clock
+        self._items: dict[Hashable, TtlCache] = {}
+
+    def get(self, key: Hashable) -> Any:
+        item = self._items.get(key)
+        return None if item is None else item.get()
+
+    def put(self, key: Hashable, value: Any) -> None:
+        self._items.setdefault(key, TtlCache(self._ttl, self._clock)).put(value)
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+StatsCache = Annotated[KeyedTtlCache, Depends(get_stats_cache)]
 
 offers_cache = TtlCache(60)
 

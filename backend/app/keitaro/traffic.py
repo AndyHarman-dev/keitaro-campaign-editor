@@ -11,6 +11,7 @@ For each regular flow and day the simulator:
 4. books money on leads and sales at the offer's payout.
 
 Re-running with the same arguments gives the same state: it replaces the days it covers.
+Draws are keyed by a day's age, not its date, so a seeded demo shows the same picture every day.
 """
 
 from __future__ import annotations
@@ -107,6 +108,6 @@ def simulate(fake: FakeKeitaro, campaign_id: int, days: int, clicks_per_day: int
             if off_offer:
                 fake.record(campaign_id, stream["id"], None, d.day, Counts(clicks=off_offer))
             for oid, clicks in split_clicks(total - off_offer, shares).items():
-                key = f"{seed}:{stream['id']}:{oid}:{d.day}"
+                key = f"{seed}:{stream['id']}:{oid}:{d.age}"  # by age: same picture any day
                 counts = offer_day(clicks, fake.profile(oid), drift.get(oid, 0.0), d, key, lag)
                 fake.record(campaign_id, stream["id"], oid, d.day, counts)
