@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, call, type Schemas } from '../../api/client'
+import type { StatsReload } from '../stats/useStats'
 import { SerialQueue, flowIn } from './serialQueue'
 
 type View = Schemas['EditorView']
@@ -30,6 +31,9 @@ export function useEditor(campaignId: number) {
   const [notes, setNotes] = useState<string[]>([])
   const [problems, setProblems] = useState<Record<number, FlowProblem>>({})
   const [fetching, setFetching] = useState(false)
+  const [statsReload, setStatsReload] = useState<StatsReload>({ epoch: 0, refresh: false })
+  // Stats reload after Fetch, Push and Push all, never after a share edit (vision V6).
+  const reloadStats = useCallback(() => setStatsReload((r) => ({ epoch: r.epoch + 1, refresh: true })), [])
   const queue = useRef(new SerialQueue<View>()).current
 
   const run = useCallback(async (request: Reply, streamId?: number, clearsProblems = false) => {
@@ -67,23 +71,24 @@ export function useEditor(campaignId: number) {
     enqueue((v) => v && api.POST(url, { ...path, body: { versions: versionsOf(v) } }))
 
   return {
-    view, error, notes, problems, fetching,
+    view, error, notes, problems, fetching, statsReload,
     dismissNotes: () => setNotes([]),
     reload,
     fetch: async () => {
       setFetching(true)
       await Promise.all([enqueue(() => api.POST('/api/campaigns/{campaign_id}/fetch', path), undefined, true), pause(MIN_BUSY_MS)])
       setFetching(false)
+      reloadStats()
     },
     op: (flow: Flow, op: OpIn) =>
       onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/ops', { ...flowPath(f), body: { version: f.version, op } })),
     forget: (flow: Flow, offerId: number) =>
       onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/forget', { ...flowPath(f), body: { version: f.version, offer_id: offerId } })),
     push: (flow: Flow) =>
-      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/push', { ...flowPath(f), body: { version: f.version } })),
+      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/push', { ...flowPath(f), body: { version: f.version } })).then(reloadStats),
     cancel: (flow: Flow) =>
       onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/cancel', { ...flowPath(f), body: { version: f.version } })),
-    pushAll: () => all('/api/campaigns/{campaign_id}/push'),
+    pushAll: () => all('/api/campaigns/{campaign_id}/push').then(reloadStats),
     cancelAll: () => all('/api/campaigns/{campaign_id}/cancel'),
   }
 }

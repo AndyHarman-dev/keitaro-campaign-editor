@@ -341,3 +341,19 @@ describe('show all offers', () => {
     expect(screen.queryByRole('region', { name: /All offers in Keitaro/ })).not.toBeInTheDocument()
   })
 })
+
+describe('stats beta off (parity gate: the editor looks exactly as before the beta)', () => {
+  it('keeps the placeholders, with no period switch and no flow totals', async () => {
+    const api = routes()
+    renderEditor()
+    await screen.findByRole('heading', { name: 'RO beauty — spring' })
+    const row = rowOf(3749)
+    expect(within(row).getByLabelText('No stats yet')).toHaveTextContent('—')
+    expect(within(row).getByLabelText('No trends yet')).toHaveTextContent('—')
+    expect(screen.queryByRole('group', { name: 'Stats period' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/clicks · CR/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Stats unavailable/)).not.toBeInTheDocument()
+    expect(api.calls.filter((c) => !c.path.endsWith('/stats')).map((c) => `${c.method} ${c.path}`))
+      .toEqual(['GET /api/campaigns/216250/editor'])
+  })
+})

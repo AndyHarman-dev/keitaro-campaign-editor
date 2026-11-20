@@ -4,7 +4,14 @@ import BusyButton from '../components/BusyButton'
 import AllOffersPanel from '../components/editor/AllOffersPanel'
 import FlowSection from '../components/editor/FlowSection'
 import { useEditor, type Editor } from '../components/editor/useEditor'
+import type { PeriodKey } from '../components/stats/format'
+import PeriodSwitch from '../components/stats/PeriodSwitch'
+import StatsBanner from '../components/stats/StatsBanner'
+import { loadPeriod, savePeriod } from '../components/stats/storage'
+import { useStats } from '../components/stats/useStats'
 import type { Schemas } from '../api/client'
+
+type Stats = ReturnType<typeof useStats>
 
 function TopActions({ editor, allOpen, onToggleAll }: { editor: Editor; allOpen: boolean; onToggleAll: () => void }) {
   const view = editor.view!
@@ -52,10 +59,38 @@ function FlowsWithoutOffers({ flows }: { flows: Schemas['FlowView'][] }) {
   )
 }
 
+function StatsControls({ stats, period, onPick }: { stats: Stats; period: PeriodKey; onPick: (p: PeriodKey) => void }) {
+  const { state, retry } = stats
+  if (state.status === 'disabled') return null
+  return (
+    <>
+      <PeriodSwitch period={period} onPick={onPick} onRefresh={retry} />
+      {state.status === 'unavailable' && <StatsBanner reason={state.reason} onRetry={retry} />}
+    </>
+  )
+}
+
+function EditorHead({ editor, allOpen, onToggleAll }: { editor: Editor; allOpen: boolean; onToggleAll: () => void }) {
+  const view = editor.view!
+  return (
+    <div className="editor-head">
+      <div>
+        <h1>{view.campaign.name}</h1>
+        <p className="muted small"><span className="mono">#{view.campaign.id}</span>
+          {view.fetched_at && ` · fetched ${new Date(view.fetched_at).toLocaleString()}`}</p>
+      </div>
+      <TopActions editor={editor} allOpen={allOpen} onToggleAll={onToggleAll} />
+    </div>
+  )
+}
+
 export default function EditorScreen() {
   const campaignId = Number(useParams().id)
   const editor = useEditor(campaignId)
   const [allOpen, setAllOpen] = useState(false)
+  const [period, setPeriod] = useState<PeriodKey>(loadPeriod)
+  const stats = useStats(campaignId, period, editor.statsReload)
+  const pick = (p: PeriodKey) => { setPeriod(p); savePeriod(p) }
   const { view } = editor
   const withOffers = view?.flows.filter((f) => f.has_offers) ?? []
   const without = view?.flows.filter((f) => !f.has_offers) ?? []
@@ -70,21 +105,16 @@ export default function EditorScreen() {
         {editor.error && <div role="alert" className="alert">{editor.error}</div>}
         {view && (
           <>
-            <div className="editor-head">
-              <div>
-                <h1>{view.campaign.name}</h1>
-                <p className="muted small"><span className="mono">#{view.campaign.id}</span>
-                  {view.fetched_at && ` · fetched ${new Date(view.fetched_at).toLocaleString()}`}</p>
-              </div>
-              <TopActions editor={editor} allOpen={allOpen} onToggleAll={() => setAllOpen((o) => !o)} />
-            </div>
+            <EditorHead editor={editor} allOpen={allOpen} onToggleAll={() => setAllOpen((o) => !o)} />
             <Notes notes={editor.notes} onDismiss={editor.dismissNotes} />
+            <StatsControls stats={stats} period={period} onPick={pick} />
             {allOpen && <AllOffersPanel flows={withOffers} onAdd={(f, id) => editor.op(f, { kind: 'add', offer_id: id })} />}
             {withOffers.map((f) => (
               <FlowSection key={f.stream_id} flow={f} problem={editor.problems[f.stream_id]}
                 onOp={(op) => editor.op(f, op)} onForget={(id) => editor.forget(f, id)}
                 onPush={() => editor.push(f)} onCancel={() => editor.cancel(f)}
-                onFetch={editor.fetch} fetching={editor.fetching} onReload={editor.reload} />
+                onFetch={editor.fetch} fetching={editor.fetching} onReload={editor.reload}
+                stats={stats.state} period={period} />
             ))}
             <FlowsWithoutOffers flows={without} />
             <p className="muted small">Nothing is written to Keitaro until you push. Pinned shares never change on add or remove; unpinned offers split the rest equally. Removing a pinned offer hides its pin; Bring back restores it.</p>
