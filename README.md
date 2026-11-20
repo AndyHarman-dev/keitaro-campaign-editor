@@ -38,6 +38,35 @@ cd frontend && npm ci && cd ..
 shown in Keitaro. The create form pre-selects them and lets you override each one under
 *Advanced*; problems (unset or not found) are shown on the form.
 
+## Database migrations
+
+The schema is managed by Alembic; the app never creates tables itself, so run migrations
+before the first start and after every pull that adds a file under `backend/migrations/versions/`.
+Alembic uses the same `DATABASE_URL` as the app (from `.env`; default `<repo>/data/app.db`).
+Run these from `backend/`:
+
+```bash
+uv run alembic upgrade head      # apply all pending migrations
+uv run alembic current           # show the revision the database is at
+uv run alembic history           # list all revisions
+uv run alembic downgrade -1      # undo the latest migration
+```
+
+To target another database, prefix the command, e.g.
+`DATABASE_URL=sqlite:////tmp/kce-demo.db uv run alembic upgrade head`.
+
+**Changing the schema**: edit the models in `backend/app/db/models.py`, then
+
+```bash
+uv run alembic revision --autogenerate -m "short description"   # writes a new file in migrations/versions/
+uv run alembic upgrade head
+uv run alembic check             # "No new upgrade operations detected" = models and migrations agree
+```
+
+Read the generated file before committing it: autogenerate misses some changes (renames,
+for example, come out as drop + add). The e2e configs (`npm run e2e`, `npm run e2e:live`)
+recreate their own database and run `alembic upgrade head` themselves.
+
 ## Run
 
 **Development** (hot reload on both sides):
