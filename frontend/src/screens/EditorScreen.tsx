@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import BusyButton from '../components/BusyButton'
 import AllOffersPanel from '../components/editor/AllOffersPanel'
 import FlowSection from '../components/editor/FlowSection'
 import { useEditor, type Editor } from '../components/editor/useEditor'
@@ -20,9 +21,7 @@ function TopActions({ editor, allOpen, onToggleAll }: { editor: Editor; allOpen:
           <button type="button" className="primary" onClick={editor.pushAll}>Push all to KT ({dirty})</button>
         </>
       ) : (
-        <button type="button" className="primary" disabled={editor.fetching} aria-busy={editor.fetching} onClick={editor.fetch}>
-          {editor.fetching ? <><span className="spinner" aria-hidden="true" />Fetching…</> : 'Fetch from KT'}
-        </button>
+        <BusyButton className="primary" busy={editor.fetching} busyLabel="Fetching…" onClick={editor.fetch}>Fetch from KT</BusyButton>
       )}
     </div>
   )
@@ -85,7 +84,7 @@ export default function EditorScreen() {
               <FlowSection key={f.stream_id} flow={f} problem={editor.problems[f.stream_id]}
                 onOp={(op) => editor.op(f, op)} onForget={(id) => editor.forget(f, id)}
                 onPush={() => editor.push(f)} onCancel={() => editor.cancel(f)}
-                onFetch={editor.fetch} onReload={editor.reload} />
+                onFetch={editor.fetch} fetching={editor.fetching} onReload={editor.reload} />
             ))}
             <FlowsWithoutOffers flows={without} />
             <p className="muted small">Nothing is written to Keitaro until you push. Pinned shares never change on add or remove; unpinned offers split the rest equally. Removing a pinned offer hides its pin; Bring back restores it.</p>

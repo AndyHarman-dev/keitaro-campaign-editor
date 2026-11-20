@@ -286,6 +286,7 @@ describe('fetch, push and cancel', () => {
     expect(alert).toHaveTextContent('Flow 2 was changed in Keitaro since your last fetch.')
     expect(within(section).getByRole('button', { name: 'Push to KT' })).toBeDisabled()
     await user.click(within(alert).getByRole('button', { name: 'Fetch & merge' }))
+    expect(within(alert).getByRole('button', { name: 'Fetching…' })).toBeDisabled()
     await waitFor(() => expect(api.of('POST /api/campaigns/216250/fetch')).toHaveLength(1))
     await waitFor(() => expect(within(section).queryByRole('alert')).not.toBeInTheDocument())
     expect(within(section).getByRole('button', { name: 'Push to KT' })).toBeEnabled()

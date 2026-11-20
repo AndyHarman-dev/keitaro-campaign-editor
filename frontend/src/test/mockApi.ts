@@ -7,7 +7,8 @@ export interface Call {
   body: unknown
 }
 
-type Reply = { status?: number; body: unknown } | ((call: Call) => { status?: number; body: unknown })
+type Answer = { status?: number; body: unknown }
+type Reply = Answer | ((call: Call) => Answer | Promise<Answer>)
 
 /** Stubs fetch with "METHOD /path" routes; records every call. Unknown routes answer 404. */
 export function mockApi(routes: Record<string, Reply>) {
@@ -19,7 +20,7 @@ export function mockApi(routes: Record<string, Reply>) {
     const call = { method: request.method, path: url.pathname, query: url.searchParams, body: text ? JSON.parse(text) : undefined }
     calls.push(call)
     const route = routes[`${call.method} ${call.path}`]
-    const reply = typeof route === 'function' ? route(call) : route
+    const reply = typeof route === 'function' ? await route(call) : route
     if (!reply) return new Response(JSON.stringify({ detail: 'not mocked' }), { status: 404 })
     return new Response(JSON.stringify(reply.body), {
       status: reply.status ?? 200,

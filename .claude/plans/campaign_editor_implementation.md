@@ -797,6 +797,27 @@ fast and locally.
   1/1 passed (≈20 s), real PUTs accepted, Fetch showed Keitaro's stored state, and afterwards
   no `kce-*` campaign was live.
 
+- **2026-11-20 — Fixes from the user's hands-on testing.** Context: the user ran the app (dev,
+  production-style, fake and real tracker) and reported bugs. Actions:
+  - README: *Database migrations* and *Run on the fake tracker* sections.
+  - Add-offer list was clipped by the flow card (`overflow: hidden`), so offers could not be
+    picked. Removed the clipping; e2e clicks the last option at its drawn position.
+  - Fetch gave no feedback. `BusyButton`: spinner + "Fetching…", held ≥ 400 ms, on the top-bar
+    Fetch and on "Fetch & merge". `index.html` is now served `Cache-Control: no-cache`, so a
+    rebuild reaches open tabs (a stale cached bundle is a likely reason the spinner was not seen).
+  - Campaign list shows "Loading campaigns…" with a spinner while the request runs.
+  - Fake tracker survives restarts: optional `KEITARO_FAKE_STATE` JSON file.
+  - A fetch whose active shares do not total 100 (offer detached in Keitaro) stages an internal
+    `Rebalance` op (`restage()`), so unpinned offers take up the slack as a pending change.
+  - **Decision 6 changed at the user's request:** a flow with no active offers may be pushed;
+    it sends `offers: []` and empties the flow (removing the only offer). Any other total ≠ 100
+    is still refused. Removed rows stay listed, so Bring back works.
+  Decisions: the Fetch spinner could not be reproduced as missing in dev mode with the current
+  code (probe: "Fetching…" + spinner for ~400 ms); fixed the two plausible causes instead.
+  Verification: verified. 166 backend tests, 60 frontend tests, Playwright 9/9; CRAP < 10, no
+  duplication, mutation 100 % on every changed file (pre-existing seed/version artefacts aside).
+  Not run against the real tracker: emptying a real flow is the user's own test.
+
 ---
 
 ## 6. Decisions Log

@@ -2,26 +2,53 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, call, type Schemas } from '../api/client'
 import { useDebounced } from '../hooks/useDebounced'
+import { Spinner } from './BusyButton'
 
 type Campaign = Schemas['CampaignOut']
 
-export default function CampaignList() {
-  const [query, setQuery] = useState('')
-  const [refreshes, setRefreshes] = useState(0)
+/** Campaigns matching `q`, reloaded when `refreshes` changes; `loading` while a request runs. */
+function useCampaigns(q: string, refreshes: number) {
   const [campaigns, setCampaigns] = useState<Campaign[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const q = useDebounced(query)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let current = true
+    setLoading(true)
     call(api.GET('/api/campaigns', { params: { query: { q } } })).then(
       (data) => current && (setCampaigns(data), setError(null)),
       (e: Error) => current && setError(e.message),
-    )
+    ).finally(() => current && setLoading(false))
     return () => {
       current = false
     }
   }, [q, refreshes])
+
+  return { campaigns, error, loading }
+}
+
+function CampaignRows({ campaigns, loading, q }: { campaigns: Campaign[] | null; loading: boolean; q: string }) {
+  return (
+    <>
+      {campaigns?.map((c) => (
+        <Link key={c.id} to={`/campaigns/${c.id}`} className="table-row">
+          <span className="mono muted">{c.id}</span>
+          <span className="strong">{c.name}</span>
+          <span className="muted">{c.group ?? '—'}</span>
+          <span className="muted">{c.domain ?? '—'}</span>
+        </Link>
+      ))}
+      {loading && <p role="status" className="empty"><Spinner />Loading campaigns…</p>}
+      {!loading && campaigns?.length === 0 && <p className="empty">No campaigns match “{q}”.</p>}
+    </>
+  )
+}
+
+export default function CampaignList() {
+  const [query, setQuery] = useState('')
+  const [refreshes, setRefreshes] = useState(0)
+  const q = useDebounced(query)
+  const { campaigns, error, loading } = useCampaigns(q, refreshes)
 
   return (
     <section aria-labelledby="camps" className="panel">
@@ -41,15 +68,7 @@ export default function CampaignList() {
       {error && <p role="status" className="error-text">{error}</p>}
       <div className="table campaigns">
         <div className="table-head"><span>ID</span><span>Name</span><span>Group</span><span>Domain</span></div>
-        {campaigns?.map((c) => (
-          <Link key={c.id} to={`/campaigns/${c.id}`} className="table-row">
-            <span className="mono muted">{c.id}</span>
-            <span className="strong">{c.name}</span>
-            <span className="muted">{c.group ?? '—'}</span>
-            <span className="muted">{c.domain ?? '—'}</span>
-          </Link>
-        ))}
-        {campaigns?.length === 0 && <p className="empty">No campaigns match “{q}”.</p>}
+        <CampaignRows campaigns={campaigns} loading={loading} q={q} />
       </div>
     </section>
   )

@@ -4,6 +4,7 @@ import OfferPicker from '../OfferPicker'
 import OfferRowView from './OfferRowView'
 import { pendingLabel } from './rowLabels'
 import type { FlowProblem, OpIn } from './useEditor'
+import BusyButton from '../BusyButton'
 
 type Flow = Schemas['FlowView']
 type Offer = Schemas['OfferOut']
@@ -16,10 +17,11 @@ interface Props {
   onPush: () => void
   onCancel: () => void
   onFetch: () => void
+  fetching: boolean
   onReload: () => void
 }
 
-function ProblemBanner({ problem, onFetch, onReload }: { problem: FlowProblem; onFetch: () => void; onReload: () => void }) {
+function ProblemBanner({ problem, onFetch, fetching, onReload }: { problem: FlowProblem; onFetch: () => void; fetching: boolean; onReload: () => void }) {
   const conflict = problem.kind === 'conflict'
   return (
     <div role="alert" className="alert flow-alert">
@@ -29,7 +31,9 @@ function ProblemBanner({ problem, onFetch, onReload }: { problem: FlowProblem; o
           ? 'Push is blocked so nothing gets overwritten. Fetch merges Keitaro’s version; your pending edits stay on top.'
           : 'Your last action was not applied.'}</p>
       </div>
-      <button type="button" className="primary" onClick={conflict ? onFetch : onReload}>{conflict ? 'Fetch & merge' : 'Reload'}</button>
+      {conflict
+        ? <BusyButton className="primary" busy={fetching} busyLabel="Fetching…" onClick={onFetch}>Fetch & merge</BusyButton>
+        : <button type="button" className="primary" onClick={onReload}>Reload</button>}
     </div>
   )
 }
@@ -48,7 +52,7 @@ function AddOffer({ flow, onAdd }: { flow: Flow; onAdd: (offerId: number) => voi
   )
 }
 
-export default function FlowSection({ flow, problem, onOp, onForget, onPush, onCancel, onFetch, onReload }: Props) {
+export default function FlowSection({ flow, problem, onOp, onForget, onPush, onCancel, onFetch, fetching, onReload }: Props) {
   return (
     <section aria-label={flow.name} className={`flow${flow.dirty ? ' dirty' : ''}`}>
       <div className="flow-head">
@@ -64,7 +68,7 @@ export default function FlowSection({ flow, problem, onOp, onForget, onPush, onC
           </div>
         )}
       </div>
-      {problem && <ProblemBanner problem={problem} onFetch={onFetch} onReload={onReload} />}
+      {problem && <ProblemBanner problem={problem} onFetch={onFetch} fetching={fetching} onReload={onReload} />}
       <div role="table" aria-label={`Offers in ${flow.name}`} className="offers">
         <div role="row" className="offer-row head">
           <span role="columnheader">Offer</span><span role="columnheader">Share</span>

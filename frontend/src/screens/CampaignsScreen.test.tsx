@@ -66,6 +66,17 @@ describe('campaign list', () => {
     expect(screen.getByText('Keitaro connected')).toBeInTheDocument()
   })
 
+  it('shows a spinner while the list loads', async () => {
+    let answer!: () => void
+    const arrived = new Promise<void>((resolve) => { answer = resolve })
+    routes({ 'GET /api/campaigns': async () => { await arrived; return { body: campaigns } } })
+    renderScreen()
+    expect(await screen.findByText('Loading campaigns…')).toBeInTheDocument()
+    answer()
+    expect(await screen.findByText('RO beauty — spring')).toBeInTheDocument()
+    expect(screen.queryByText('Loading campaigns…')).not.toBeInTheDocument()
+  })
+
   it('searches on the server', async () => {
     const api = routes()
     const user = userEvent.setup()
