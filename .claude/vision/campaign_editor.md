@@ -63,9 +63,9 @@ One local web app, two capabilities, **one entry point**:
     above → user lands in the editor of the new campaign.
 - **Campaign editor**
   - A table grouped by flow. Each flow that has offers renders as a header row
-    (`Stream: Flow 2 (#2) · stream_id …`) followed by one row per offer.
+    (`Flow 2 #564221`: flow name and its Keitaro id) followed by one row per offer.
   - Flows without offers are not parsed into rows; they are listed below the table by name
-    only (`Stream: Flow 1`).
+    only (`Flow 1 #564220`).
   - Columns: **Offer** (name, id, preview link) · **Share** (% + pin toggle) · **Stats** ·
     **Trends** · **Actions**. Stats and Trends are kept as visible placeholders (out of scope
     for now).
@@ -212,6 +212,8 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
 | Extras | Include **View in KT** link, **Show all offers**, **offer preview** link. |
 | Show all offers | Opens a searchable list of **every offer registered in Keitaro** (not only the ones in this campaign). Removed rows always stay visible in their flow. |
 | Row order & remainder | Rows follow **Keitaro's order of offers in the flow** (as the API returns them); newly added offers go at the end. The +1 leftover points from integer rounding go to the first unpinned rows in that order, so the same input always yields the same shares. |
+| Flow header | Flow name plus its Keitaro id (`Flow 2 #564221`). No "Stream:" prefix. |
+| Removing a pinned offer | The pin goes away with the offer, and **comes back on Bring back** with the share it had when removed. If that share no longer fits, auto-unpin applies as usual. |
 
 ## 6. Open questions
 
@@ -220,9 +222,8 @@ the two remaining unpinned offers become 38 % / 37 %, the pinned one stays 25 %.
       live tracker*.
 - [x] Redirect URL field and `PUT /streams/{id}` semantics: settled by a write test, see §4
       *Write test*.
-- [ ] Removing a pinned offer: does its pin go away with it, and does it come back on
-      Bring back? Default: the pin is kept, dormant, and returns on Bring back; auto-unpin
-      applies if the numbers no longer work.
+
+No open questions right now.
 
 ## 7. Decisions Log
 
