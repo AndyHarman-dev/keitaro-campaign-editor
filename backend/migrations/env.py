@@ -21,7 +21,10 @@ if config.config_file_name is not None:
 from app.config import get_settings  # noqa: E402
 from app.db.session import Base  # noqa: E402
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+import app.db.models  # noqa: E402,F401  (registers the tables on Base.metadata)
+
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", get_settings().database_url)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

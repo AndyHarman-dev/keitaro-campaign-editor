@@ -654,6 +654,15 @@ fast and locally.
   passed once against the real tracker** (create, both flows, unvalidated 60 % share, list
   replace and empty, archive → 404). Decision 13 (archived-offer detection) remains an
   assumption: `/offers/deleted` parses, but no archived offer could be observed.
+- **2026-11-20 — Phase 4.** Context: storage for base, pending ops and created campaigns.
+  Actions: `app/db/codec.py` (the only JSON format), `models.py` (`flows`,
+  `created_campaigns`), `repository.py` (`FlowRepository` with optimistic `version` via
+  `UPDATE … WHERE version = ?`, `CampaignLog`, `StoredFlow` value so the ORM stays inside the
+  module), first Alembic revision; `migrations/env.py` now respects an explicit
+  `sqlalchemy.url`. Decisions: none beyond the plan. Verification: verified — 93 tests (incl.
+  `alembic upgrade head` on an empty DB), `uv run alembic upgrade head` applied to
+  `data/app.db`; mutator `app/db` 8/8 killed, 4 "uncovered" sites are the multi-line
+  `update(...)` call (coverage artefact).
 
 ---
 
