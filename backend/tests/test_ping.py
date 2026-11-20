@@ -7,13 +7,14 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.main import create_app
+from tests.local import LocalClient
 
 
 def _api(tmp_path, key: str = "k" * 32) -> TestClient:
     settings = Settings(_env_file=None, keitaro_base_url="https://tracker.example",
                         keitaro_api_key=SecretStr(key),
                         database_url=f"sqlite:///{tmp_path / 'app.db'}")
-    return TestClient(create_app(settings, frontend_dist=tmp_path / "none"))
+    return LocalClient(create_app(settings, frontend_dist=tmp_path / "none"))
 
 
 def test_ping_reports_unconfigured_when_key_missing(tmp_path):

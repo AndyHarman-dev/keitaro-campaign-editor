@@ -173,6 +173,10 @@ video and trace land in `frontend/test-results/live/` (gitignored).
   offer"), each with its original state, and only after the shares are checked to total 100.
 - The tracker may be shared. The app writes only to campaigns it created or that you opened
   in the editor.
+- The API answers only on `localhost` / `127.0.0.1` and refuses writes whose `Origin` is another
+  site, so a web page open in the same browser cannot drive it (DNS rebinding, cross-site POST).
+  Requests without an `Origin` header, such as `curl`, still work. To use the app from another
+  device, add its address to `ALLOWED_HOSTS` (see `.env.example`).
 
 ## Layout
 

@@ -1,7 +1,6 @@
 """Shared fixtures: the API wired to FakeKeitaro and a throwaway SQLite database."""
 
 import pytest
-from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -12,6 +11,7 @@ from app.db.session import Base
 from app.keitaro.client import KeitaroClient
 from app.keitaro.fake import FakeKeitaro
 from app.main import app
+from tests.local import LocalClient
 
 
 @pytest.fixture
@@ -54,5 +54,5 @@ def api(fake, settings, tmp_path):
     app.dependency_overrides = {deps.get_keitaro: keitaro, deps.get_session: session,
                                 deps.get_settings: lambda: settings}
     deps.offers_cache.clear()
-    yield TestClient(app)
+    yield LocalClient(app)
     app.dependency_overrides = {}

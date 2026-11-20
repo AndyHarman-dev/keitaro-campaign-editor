@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from app.config import Settings
 from app.db.session import Base
 from app.main import create_app
+from tests.local import LocalClient
 
 
 def _settings(tmp_path, **extra) -> Settings:
@@ -18,7 +19,7 @@ def _settings(tmp_path, **extra) -> Settings:
 
 
 def test_fake_mode_serves_a_seeded_tracker_without_a_key(tmp_path):
-    api = TestClient(create_app(_settings(tmp_path, keitaro_fake=True)))
+    api = LocalClient(create_app(_settings(tmp_path, keitaro_fake=True)))
     assert api.get("/api/keitaro/ping").json()["reachable"] is True
     lookups = api.get("/api/lookups").json()
     assert lookups["problems"] == []
@@ -32,13 +33,13 @@ def test_fake_mode_serves_a_seeded_tracker_without_a_key(tmp_path):
 def test_fake_mode_uses_the_env_default_names(tmp_path):
     settings = _settings(tmp_path, keitaro_fake=True, keitaro_default_domain="mine.example",
                          keitaro_default_group="Mine", keitaro_default_source="Src")
-    lookups = TestClient(create_app(settings)).get("/api/lookups").json()
+    lookups = LocalClient(create_app(settings)).get("/api/lookups").json()
     assert lookups["problems"] == []
     assert [d["name"] for d in lookups["domains"]] == ["mine.example"]
 
 
 def test_fake_controls_simulate_changes_made_in_keitaro(tmp_path):
-    api = TestClient(create_app(_settings(tmp_path, keitaro_fake=True)))
+    api = LocalClient(create_app(_settings(tmp_path, keitaro_fake=True)))
     cid = api.get("/api/campaigns?q=demo").json()[0]["id"]
     flow = next(f for f in api.get(f"/api/campaigns/{cid}/editor").json()["flows"]
                 if f["has_offers"])
@@ -51,7 +52,7 @@ def test_fake_controls_simulate_changes_made_in_keitaro(tmp_path):
 
 
 def test_fake_controls_do_not_exist_against_a_real_tracker(tmp_path):
-    api = TestClient(create_app(_settings(tmp_path)))
+    api = LocalClient(create_app(_settings(tmp_path)))
     assert api.post("/api/_fake/offers/1/archive").status_code in (404, 405)
 
 
@@ -60,7 +61,7 @@ def test_built_frontend_is_served_with_spa_fallback(tmp_path):
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html>app</html>")
     (dist / "assets" / "app.js").write_text("console.log(1)")
-    api = TestClient(create_app(_settings(tmp_path), frontend_dist=dist))
+    api = LocalClient(create_app(_settings(tmp_path), frontend_dist=dist))
     assert api.get("/").text == "<html>app</html>"
     assert api.get("/campaigns/123").text == "<html>app</html>"
     assert api.get("/assets/app.js").text == "console.log(1)"
@@ -73,7 +74,7 @@ def test_index_html_is_never_cached_so_a_rebuild_reaches_open_tabs(tmp_path):
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<html>app</html>")
     (dist / "assets" / "app-1a2b.js").write_text("console.log(1)")
-    api = TestClient(create_app(_settings(tmp_path), frontend_dist=dist))
+    api = LocalClient(create_app(_settings(tmp_path), frontend_dist=dist))
     assert api.get("/").headers["cache-control"] == "no-cache"
     assert api.get("/campaigns/123").headers["cache-control"] == "no-cache"
     assert api.get("/index.html").headers["cache-control"] == "no-cache"
@@ -81,12 +82,12 @@ def test_index_html_is_never_cached_so_a_rebuild_reaches_open_tabs(tmp_path):
 
 
 def test_no_frontend_build_means_api_only(tmp_path):
-    api = TestClient(create_app(_settings(tmp_path), frontend_dist=tmp_path / "missing"))
+    api = LocalClient(create_app(_settings(tmp_path), frontend_dist=tmp_path / "missing"))
     assert api.get("/").status_code == 404
 
 
 def test_fake_controls_stay_out_of_the_api_schema(tmp_path):
-    paths = TestClient(create_app(_settings(tmp_path, keitaro_fake=True))).get(
+    paths = LocalClient(create_app(_settings(tmp_path, keitaro_fake=True))).get(
         "/openapi.json").json()["paths"]
     assert not [p for p in paths if p.startswith("/api/_fake")]
 
@@ -100,7 +101,7 @@ def _new_campaign(api: TestClient, name: str) -> int:
 
 def test_fake_state_file_keeps_the_tracker_across_restarts(tmp_path):
     settings = _settings(tmp_path, keitaro_fake=True, keitaro_fake_state=tmp_path / "fake.json")
-    first = TestClient(create_app(settings))
+    first = LocalClient(create_app(settings))
     kept = _new_campaign(first, "kept one")
     flow = next(f for f in first.get(f"/api/campaigns/{kept}/editor").json()["flows"]
                 if f["has_offers"])
@@ -109,7 +110,7 @@ def test_fake_state_file_keeps_the_tracker_across_restarts(tmp_path):
     first.post(f"/api/flows/{flow['stream_id']}/push", json={"version": flow["version"] + 1})
     first.post("/api/_fake/offers/4242/archive")
 
-    restarted = TestClient(create_app(settings))
+    restarted = LocalClient(create_app(settings))
     names = [c["name"] for c in restarted.get("/api/campaigns").json()]
     assert sorted(names) == ["Demo campaign", "kept one"]
     view = restarted.post(f"/api/campaigns/{kept}/fetch").json()
@@ -121,7 +122,7 @@ def test_fake_state_file_keeps_the_tracker_across_restarts(tmp_path):
 
 def test_fake_without_a_state_file_starts_from_the_demo_data(tmp_path):
     settings = _settings(tmp_path, keitaro_fake=True)
-    _new_campaign(TestClient(create_app(settings)), "gone")
-    names = [c["name"] for c in TestClient(create_app(settings)).get("/api/campaigns").json()]
+    _new_campaign(LocalClient(create_app(settings)), "gone")
+    names = [c["name"] for c in LocalClient(create_app(settings)).get("/api/campaigns").json()]
     assert names == ["Demo campaign"]
     assert not list(tmp_path.glob("*.json"))
