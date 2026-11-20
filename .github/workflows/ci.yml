@@ -31,13 +31,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -49,7 +49,9 @@ jobs:
             name=${tool%%:*}; sha=${tool##*:}
             git clone --quiet "https://github.com/unclebob/$name.git" "$RUNNER_TEMP/tools/$name"
             git -C "$RUNNER_TEMP/tools/$name" checkout --quiet "$sha"
-            ln -s "$RUNNER_TEMP/tools/$name/$name" "$RUNNER_TEMP/bin/$name"
+            # A wrapper, not a symlink: each tool finds its own folder from $0.
+            printf '#!/bin/sh\nexec "%s" "$@"\n' "$RUNNER_TEMP/tools/$name/$name" > "$RUNNER_TEMP/bin/$name"
+            chmod +x "$RUNNER_TEMP/bin/$name"
           done
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
@@ -69,13 +71,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -89,7 +91,7 @@ jobs:
         run: npm run e2e
       - name: Keep traces and screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results
           path: frontend/test-results/
