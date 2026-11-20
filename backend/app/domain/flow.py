@@ -332,10 +332,11 @@ class OfferLink:
 
 def push_plan(working: FlowState) -> list[OfferLink]:
     """The complete offer list to send. Keitaro replaces the whole list and does not
-    validate shares, so the total is checked here."""
+    validate shares, so the total is checked here. No active offers sends an empty list,
+    which empties the flow (removing its only offer)."""
     links = [OfferLink(r.offer_id, r.share, r.kt_state) for r in working.rows if r.active]
     total = sum(link.share for link in links)
-    if not links or total != 100:
+    if links and total != 100:
         raise InvalidPush(f"active shares must total 100 (got {total} over {len(links)})")
     return links
 

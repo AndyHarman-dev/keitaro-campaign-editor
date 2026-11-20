@@ -254,11 +254,19 @@ def test_push_of_a_clean_flow_sends_nothing(api, fake, cid):
     assert puts(fake) == []
 
 
-def test_push_of_a_flow_with_every_offer_removed_is_refused(api, fake, cid):
+def test_removing_the_only_offer_and_pushing_empties_the_flow(api, fake, cid):
     flow = offer_flow(act(api, offer_flow(editor(api, cid)), "remove", 18813))
     resp = push(api, flow)
-    assert resp.status_code == 422
-    assert puts(fake) == []
+    assert resp.status_code == 200, resp.text
+    assert json.loads(puts(fake)[0].content) == {"offers": []}
+    flow = offer_flow(resp.json())
+    assert (flow["has_offers"], flow["total"], flow["dirty"]) == (True, 0, False)
+    assert rows(flow) == [(18813, 0, "removed")]  # still listed, so it can be brought back
+    again = api.post(f"/api/campaigns/{cid}/fetch").json()
+    assert (offer_flow(again)["pending_count"], again["notes"]) == (0, [])
+    flow = offer_flow(act(api, offer_flow(again), "bring_back", 18813))
+    push(api, flow)
+    assert kt_offers(fake, flow) == [(18813, 100, "active")]
 
 
 def test_offer_removed_in_keitaro_is_kept_and_can_be_brought_back(api, fake, cid):
@@ -405,7 +413,15 @@ def test_push_reports_when_keitaro_stores_something_else(api, fake, cid, monkeyp
 
 
 
-def test_push_all_reports_an_invalid_flow_and_still_pushes_the_others(api, fake, cid):
+def test_push_all_reports_an_invalid_flow_and_still_pushes_the_others(api, fake, cid,
+                                                                     monkeypatch):
+    def refuse_empty(working):
+        if not any(r.active for r in working.rows):
+            raise flows_service.InvalidPush("active shares must total 100 (got 0 over 0)")
+        return real_plan(working)
+
+    real_plan = flows_service.push_plan
+    monkeypatch.setattr(flows_service, "push_plan", refuse_empty)  # edits can't produce one now
     _second_offer_flow(fake, cid)
     view = editor(api, cid)
     view = act(api, offer_flow(view, "Flow 2"), "add", 3717)

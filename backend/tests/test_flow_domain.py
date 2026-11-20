@@ -323,9 +323,8 @@ def test_push_plan_refuses_shares_that_do_not_total_100():
         push_plan(flow(50, 40))
 
 
-def test_push_plan_refuses_an_empty_flow():
-    with pytest.raises(InvalidPush):
-        push_plan(FlowState(rows=(), next_pin_seq=1))
+def test_push_plan_empties_a_flow_with_no_active_offers():
+    assert push_plan(FlowState(rows=(), next_pin_seq=1)) == []
 
 
 # --- effective ops: what a pending list still does -----------------------------------------
