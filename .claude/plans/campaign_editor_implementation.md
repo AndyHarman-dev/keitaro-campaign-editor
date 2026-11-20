@@ -785,6 +785,17 @@ fast and locally.
   verified. 160 backend tests (9 new), 58 frontend tests (9 new), Playwright 7/7,
   `scripts/check.sh` full green (backend 149/149 killed and 7 multi-line coverage
   artefacts, frontend 171/171).
+- **2026-11-20 — Real-tracker session.** Context: the user asked for a hands-on run on the real
+  tracker before evaluation (none had happened; e2e used the fake). Actions: opt-in
+  `npm run e2e:live` (`playwright.live.config.ts`, `e2e-live/`). It runs the built app on
+  the real `.env`, creates `kce-ui-check-…` through the form, checks the editor, pins → Push →
+  Fetch, unpins → Push, and archives only that campaign (name-checked) afterwards. Decisions:
+  the key can read only one offer, so the multi-offer steps (add, re-share, remove) run only
+  when two or more are visible; they were not exercised on the real tracker. Decision 13 (an
+  archived offer = its id in `/offers/deleted`) is still unverified. Proving it would mean
+  archiving a real offer on the shared tracker, which was not done. Verification: verified.
+  1/1 passed (≈20 s), real PUTs accepted, Fetch showed Keitaro's stored state, and afterwards
+  no `kce-*` campaign was live.
 
 ---
 

@@ -81,6 +81,12 @@ cd backend && uv run pytest -m live
 They create one throwaway campaign per test with your `.env` defaults, work only inside it,
 and archive it at the end. They are never part of a default run.
 
+**Opt-in browser session on the real tracker** (`cd frontend && npm run e2e:live`) drives the
+built UI against your `.env`: create a `kce-ui-check-…` campaign, pin and push, fetch, and
+(when the key sees two or more offers) add, re-share, remove and push again. It archives that
+one campaign at the end and refuses to archive anything with another name. Screenshots,
+video and trace land in `frontend/test-results/live/` (gitignored).
+
 ## Safety rules
 
 - The app never calls Keitaro's `clean_archive` endpoints: they permanently empty the archive

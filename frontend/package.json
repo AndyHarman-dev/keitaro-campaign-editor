@@ -12,7 +12,8 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "gen:api": "cd ../backend && uv run python -c \"import json; from app.main import app; print(json.dumps(app.openapi(), indent=1))\" > ../frontend/src/api/openapi.json && cd ../frontend && openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "e2e:live": "npm run build && playwright test -c playwright.live.config.ts"
   },
   "dependencies": {
     "openapi-fetch": "^0.14.1",
