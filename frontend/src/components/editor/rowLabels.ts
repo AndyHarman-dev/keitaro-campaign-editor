@@ -12,6 +12,7 @@ export function rowTag(row: Row): { text: string; tone: Tone } | null {
     case 'restored': return { text: 'will be restored', tone: 'pending' }
     case 'removed': return { text: 'will be removed', tone: 'pending' }
     case 'share': return { text: `was ${row.base_share}%`, tone: 'pending' }
+    case 'pin': return { text: row.pinned ? 'will be pinned' : 'will be unpinned', tone: 'pending' }
   }
   if (row.removed_by === 'keitaro') return { text: 'removed in Keitaro', tone: 'neutral' }
   return null

@@ -31,6 +31,8 @@ def _change(base: OfferRow | None, row: OfferRow) -> str | None:
         return "removed" if base.active else "restored"
     if row.active and base.share != row.share:
         return "share"
+    if row.active and (base.pin is None) != (row.pin is None):
+        return "pin"
     return None
 
 

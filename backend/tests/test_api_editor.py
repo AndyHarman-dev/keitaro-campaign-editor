@@ -112,6 +112,18 @@ def test_ops_are_staged_locally_and_nothing_is_sent(api, fake, cid):
     assert rows(offer_flow(editor(api, cid))) == rows(flow)
 
 
+def test_a_pin_only_change_is_shown_as_a_pin_change(api, cid):
+    flow = offer_flow(act(api, offer_flow(editor(api, cid)), "add", 3717))
+    flow = offer_flow(push_and_view(api, {"flows": [flow]}))
+    flow = offer_flow(act(api, flow, "toggle_pin", 3717))
+    assert (flow["dirty"], flow["pending_count"]) == (True, 1)
+    assert [(r["offer_id"], r["change"], r["pinned"]) for r in flow["rows"]] == [
+        (18813, None, False), (3717, "pin", True)]
+    flow = offer_flow(push_and_view(api, {"flows": [flow]}))
+    flow = offer_flow(act(api, flow, "toggle_pin", 3717))
+    assert [(r["change"], r["pinned"]) for r in flow["rows"]][1] == ("pin", False)
+
+
 def test_share_edit_pins_and_reports_auto_unpin(api, cid):
     flow = offer_flow(act(api, offer_flow(editor(api, cid)), "add", 3717))
     flow = offer_flow(act(api, flow, "set_share", 3717, share=70))

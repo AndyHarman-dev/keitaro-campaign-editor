@@ -468,7 +468,7 @@ export interface components {
              * Change
              * @description pending change against the last fetch/push
              */
-            change: ("added" | "removed" | "restored" | "share") | null;
+            change: ("added" | "removed" | "restored" | "share" | "pin") | null;
             /** Base Share */
             base_share: number | null;
             /** Preview Url */

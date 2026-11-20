@@ -94,7 +94,7 @@ class RowView(BaseModel):
     status: Literal["active", "removed"]
     removed_by: Literal["local", "keitaro"] | None
     archived: bool
-    change: Literal["added", "removed", "restored", "share"] | None = Field(
+    change: Literal["added", "removed", "restored", "share", "pin"] | None = Field(
         description="pending change against the last fetch/push")
     base_share: int | None
     preview_url: str | None

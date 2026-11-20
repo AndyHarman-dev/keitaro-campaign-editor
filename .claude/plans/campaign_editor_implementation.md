@@ -771,9 +771,10 @@ fast and locally.
      forced Reload. The app is single-user and local, so this was left as a known edge.
   5. *Applied.* Flows deleted in Keitaro never left the editor. Fetch now drops them with a
      note that says whether pending edits were lost.
-  6. *Escalated to the user.* A pin-only change marks the flow dirty, and Push sends an
-     identical list. This reopens decision 4 ("pins are local only") and what
-     `pending_count` counts.
+  6. *Escalated → the user chose "show a pin change".* A pin-only change still makes the
+     flow dirty and needs a push. The row now carries `change: "pin"`, with the tag "will be
+     pinned" or "will be unpinned", so every row that `pending_count` counts has a tag.
+     The user's choice differed from my recommendation (save pins straight to the base).
   7. *Applied.* Editing the offer text after a pick kept the old pick (create form and
      the flow Add box). `OfferPicker.onClear`.
   8. *Applied.* Show all offers counted a removed row as "in Flow X". Only active rows

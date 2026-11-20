@@ -81,6 +81,8 @@ describe('row states', () => {
             row(3, 0, { status: 'removed', removed_by: 'local', change: 'removed', base_share: 33 }),
             row(4, 0, { status: 'removed', removed_by: 'keitaro' }),
             row(5, 0, { status: 'removed', removed_by: 'keitaro', change: null, archived: true }),
+            row(6, 0, { change: 'pin', pinned: true, base_share: 0 }),
+            row(7, 0, { change: 'pin', pinned: false, base_share: 0 }),
           ],
         })]),
       },
@@ -94,6 +96,8 @@ describe('row states', () => {
     expect(within(rowOf(5)).getByText('archived in Keitaro · can’t be restored')).toBeInTheDocument()
     expect(within(rowOf(5)).queryByRole('button', { name: 'Bring back' })).not.toBeInTheDocument()
     expect(within(rowOf(5)).getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(within(rowOf(6)).getByText('will be pinned')).toBeInTheDocument()
+    expect(within(rowOf(7)).getByText('will be unpinned')).toBeInTheDocument()
   })
 
   it('marks a brought-back row as will be restored', async () => {
