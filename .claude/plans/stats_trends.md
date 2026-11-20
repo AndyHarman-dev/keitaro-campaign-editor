@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: InProgress
 ---
 
 # Stats & Trends: implementation plan
