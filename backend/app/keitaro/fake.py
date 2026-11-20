@@ -8,6 +8,8 @@ behaviour the app depends on:
 - DELETE /campaigns/{id} archives: GET then answers 404 and the list leaves it out.
 - Offers this key may not read answer 403 and are missing from GET /offers.
 - Any clean_archive request fails the test loudly (the client must never send one).
+- POST /report/build groups stored daily traffic by any subset of campaign, flow, offer and
+  day, filters on campaign_id, and rejects an unknown column with Keitaro's 400 message.
 
 With a `state_file`, every change is saved there and `FakeKeitaro.load` picks it up again, so a
 local demo keeps its campaigns across restarts. Tests run without one, in memory.
@@ -19,12 +21,23 @@ import json
 import os
 import re
 from collections.abc import Callable
+from dataclasses import asdict, fields
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import httpx
 
+from app.domain.stats import Counts
+
 Handler = Callable[[httpx.Request, re.Match[str]], httpx.Response]
+TrafficKey = tuple[int, int, int | None, date]  # campaign, flow (stream), offer, day
+
+REPORT_DIMENSIONS = ("campaign_id", "stream_id", "offer_id", "day")
+REPORT_MEASURES = tuple(f.name for f in fields(Counts))
+REPORT_COLUMNS = (*REPORT_DIMENSIONS, *REPORT_MEASURES)
+_READS = {("POST", "/report/build")}  # reads sent as POST: they never rewrite the state file
 
 
 def _ok(body: Any) -> httpx.Response:
@@ -46,6 +59,7 @@ class FakeKeitaro:
         self.domains: list[dict[str, Any]] = []
         self.groups: list[dict[str, Any]] = []
         self.sources: list[dict[str, Any]] = []
+        self.traffic: dict[TrafficKey, Counts] = {}
         self.requests: list[httpx.Request] = []
         self._failures: list[tuple[str, str, int, str]] = []
         self._next_id = 1000
@@ -63,6 +77,7 @@ class FakeKeitaro:
             ("GET", re.compile(r"/domains"), lambda r, m: _ok(self.domains)),
             ("GET", re.compile(r"/groups"), self._list_groups),
             ("GET", re.compile(r"/traffic_sources"), lambda r, m: _ok(self.sources)),
+            ("POST", re.compile(r"/report/build"), self._report),
         ]
 
     def _new_id(self) -> int:
@@ -78,7 +93,8 @@ class FakeKeitaro:
         state = {"next_id": self._next_id, "campaigns": list(self.campaigns.values()),
                  "streams": list(self.streams.values()), "offers": list(self.offers.values()),
                  "unreadable": sorted(self.unreadable), "deleted_offers": sorted(self.deleted_offers),
-                 "domains": self.domains, "groups": self.groups, "sources": self.sources}
+                 "domains": self.domains, "groups": self.groups, "sources": self.sources,
+                 "traffic": [_traffic_row(key, counts) for key, counts in self.traffic.items()]}
         partial = self.state_file.with_suffix(".tmp")
         partial.write_text(json.dumps(state))
         os.replace(partial, self.state_file)
@@ -93,6 +109,7 @@ class FakeKeitaro:
         fake.unreadable = set(state["unreadable"])
         fake.deleted_offers = set(state["deleted_offers"])
         fake.domains, fake.groups, fake.sources = state["domains"], state["groups"], state["sources"]
+        fake.traffic = dict(_traffic_entry(row) for row in state.get("traffic", []))
         return fake
 
     @property
@@ -122,6 +139,11 @@ class FakeKeitaro:
         stream["offers"] = [o for o in stream["offers"] if o["offer_id"] != offer_id]
         self.save()
 
+    def record(self, campaign_id: int, stream_id: int, offer_id: int | None, day: date,
+               counts: Counts) -> None:
+        """States one day's exact counts for a flow and offer, replacing what was there."""
+        self.traffic[(campaign_id, stream_id, offer_id, day)] = counts
+
     def flows_of(self, campaign_id: int) -> list[dict[str, Any]]:
         return [s for s in self.streams.values() if s["campaign_id"] == campaign_id]
 
@@ -138,7 +160,7 @@ class FakeKeitaro:
         for method, pattern, handler in self._routes:
             if method == request.method and (match := pattern.fullmatch(path)):
                 response = handler(request, match)
-                if method != "GET":
+                if method != "GET" and (method, path) not in _READS:
                     self.save()
                 return response
         return _err(404, f"no route {request.method} {path}")
@@ -232,3 +254,58 @@ class FakeKeitaro:
     def _list_groups(self, request: httpx.Request, match: re.Match[str]) -> httpx.Response:
         kind = request.url.params.get("type")
         return _ok([g for g in self.groups if kind is None or g.get("type") == kind])
+
+    # --- reports -----------------------------------------------------------------------
+
+    def _report(self, request: httpx.Request, match: re.Match[str]) -> httpx.Response:
+        body = json.loads(request.content)
+        dims, measures = body.get("dimensions", []), body.get("measures", [])
+        bad = ([d for d in dims if d not in REPORT_DIMENSIONS]
+               + [m for m in measures if m not in REPORT_MEASURES])
+        if bad:
+            return _err(400, f"Column '{bad[0]}' is not defined. The report contains only: "
+                             f"{', '.join(REPORT_COLUMNS)}")
+        groups: dict[tuple[Any, ...], Counts] = {}
+        for key, counts in self._matching(body):
+            group = tuple(_dimension(key, d) for d in dims)
+            groups[group] = groups.get(group, Counts()) + counts
+        rows = [{**dict(zip(dims, group)), **_measures(counts, measures)}
+                for group, counts in groups.items()]
+        return _ok({"rows": rows, "total": len(rows)})
+
+    def _matching(self, body: dict[str, Any]) -> list[tuple[TrafficKey, Counts]]:
+        since = date.fromisoformat(body["range"]["from"])
+        until = date.fromisoformat(body["range"]["to"])
+        wanted = _campaign_filter(body.get("filters", []))
+        return [(key, counts) for key, counts in self.traffic.items()
+                if since <= key[3] <= until and (wanted is None or key[0] in wanted)]
+
+
+def _campaign_filter(filters: list[dict[str, Any]]) -> set[int] | None:
+    for f in filters:
+        if f["name"] == "campaign_id":
+            value = f["expression"]
+            return set(value) if f["operator"] == "IN_LIST" else {value}
+    return None
+
+
+def _dimension(key: TrafficKey, name: str) -> Any:
+    value = key[REPORT_DIMENSIONS.index(name)]
+    return value.isoformat() if isinstance(value, date) else value
+
+
+def _measures(counts: Counts, names: list[str]) -> dict[str, Any]:
+    values = asdict(counts)
+    return {n: str(values[n]) if isinstance(values[n], Decimal) else values[n] for n in names}
+
+
+def _traffic_row(key: TrafficKey, counts: Counts) -> dict[str, Any]:
+    return {**{d: _dimension(key, d) for d in REPORT_DIMENSIONS},
+            **_measures(counts, list(REPORT_MEASURES))}
+
+
+def _traffic_entry(row: dict[str, Any]) -> tuple[TrafficKey, Counts]:
+    key = (row["campaign_id"], row["stream_id"], row["offer_id"], date.fromisoformat(row["day"]))
+    counts = Counts(**{m: Decimal(row[m]) if m.endswith("revenue") else row[m]
+                       for m in REPORT_MEASURES})
+    return key, counts

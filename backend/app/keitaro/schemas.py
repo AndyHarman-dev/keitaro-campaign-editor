@@ -1,10 +1,13 @@
 """Keitaro responses parsed once, at the boundary. Unknown fields are ignored."""
 
+from datetime import date
+from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.flow import OfferLink
+from app.domain.stats import Counts, DayRow
 
 
 class _Kt(BaseModel):
@@ -74,3 +77,36 @@ class KtStream(_Kt):
     @property
     def countries(self) -> list[str]:
         return next((list(f.payload) for f in self.filters if f.name == "country"), [])
+
+
+class KtReportRow(_Kt):
+    """One /report/build row grouped by stream, offer and day (vision §5, assumption A1).
+
+    Lenient on purpose: numbers may arrive as strings, a row with no offer may carry null, 0
+    or "". Missing measures count as zero.
+    """
+
+    stream_id: int
+    offer_id: int | None = None
+    day: date
+    clicks: int = 0
+    leads: int = 0
+    sales: int = 0
+    rejected: int = 0
+    lead_revenue: Decimal = Decimal(0)
+    sale_revenue: Decimal = Decimal(0)
+
+    @field_validator("offer_id", mode="before")
+    @classmethod
+    def _no_offer(cls, value: Any) -> Any:
+        return value or None
+
+    @field_validator("lead_revenue", "sale_revenue", mode="before")
+    @classmethod
+    def _exact_money(cls, value: Any) -> Any:
+        return str(value)  # a float 0.1 becomes Decimal("0.1"), not its binary expansion
+
+    def to_day_row(self) -> DayRow:
+        return DayRow(self.stream_id, self.offer_id, self.day,
+                      Counts(self.clicks, self.leads, self.sales, self.rejected,
+                             self.lead_revenue, self.sale_revenue))
