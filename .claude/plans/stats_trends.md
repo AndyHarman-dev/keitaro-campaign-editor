@@ -2,150 +2,480 @@
 status: Pending
 ---
 
-# Stats and Trends columns
+# Stats & Trends: implementation plan
 
-Fill the editor's Stats and Trends placeholders with per-offer performance from Keitaro's
-report API, so share decisions rest on data. Built and demoed on the fake tracker; the real
-tracker is used only for a read-only contract check.
+Implements the **approved and locked** vision [`.claude/vision/stats_trends.md`](../vision/stats_trends.md).
+Every number, label and rule comes from it; where this plan and the vision disagree, the vision
+wins and this plan is wrong. This file replaces the draft plan of 2026-11-20 (its exploration
+notes are kept below, its decisions are superseded).
 
-Design canvas: "Campaign Editor Design", artboards *2 · Editor* (filled columns) and
-*4 · Stats & trends* (cell states and the calculation).
+Design canvas: "Campaign Editor Design", artboards *2 · Editor* and *4 · Stats & trends*.
 
-## Context: what the report API does (explored 2026-11-20)
+## Context
 
-Source: Keitaro's Admin API spec (`admin-api.docs.keitaro.io/openapi.json`, `POST /report/build`)
-plus a read-only probe with our key, filtered to campaigns this app created.
+### What exists today (`main` at 02e6676)
 
-**Verified on the real tracker**
-- The key may read reports: `POST /report/build` → 200.
-- Request: `{"range": {"interval" | "from","to", "timezone"}, "dimensions": [...],
-  "measures": [...], "filters": [{"name","operator","expression"}], "sort": [...]}`.
-  `metrics` is accepted as a synonym of `measures` (the spec's example uses it); we send `measures`.
-- `IN_LIST` / `EQUALS` filters on `campaign_id` work.
-- Response: `{"rows": [ {<column>: value, ...} ], "total": <int>}`: rows are flat objects keyed by
-  column name (the spec wrongly types them as strings).
-- No dimensions → one totals row, e.g. `{"clicks": 0, "conversions": 0, "revenue": 0}`.
-- An unknown column → 400 `{"error": "Column 'x' is not defined. ... contains only: <183 names>"}`.
-  The list includes `stream_id`, `offer_id`, `day`, `clicks`, `campaign_unique_clicks`,
-  `conversions`, `leads`, `sales`, `rejected`, `approve`, `revenue`, `confirmed_revenue`,
-  `sale_revenue`, `lead_revenue`, `cost`, `cr`, `epc`, `epc_confirmed`.
+- **Backend** (`backend/app`): FastAPI app built by `create_app(settings)` in `main.py`.
+  - `config.Settings` (pydantic-settings, `.env` + environment).
+  - `keitaro/client.py`: `KeitaroClient`, typed async calls, `clean_archive` refused before I/O.
+  - `keitaro/fake.py`: `FakeKeitaro`, an in-process model of the API behind an
+    `httpx.MockTransport`, with JSON persistence (`save`/`load`).
+  - `keitaro/seed.py`: the demo tracker for `KEITARO_FAKE=1`.
+  - `api/fake_controls.py`: `/api/_fake/*`, mounted only in fake mode.
+  - `domain/flow.py`: pure share logic, tested with examples and hypothesis.
+  - `api/views.py`: builds `EditorView` from stored flows.
+  - `api/deps.py`: `Keitaro`, `Db`, `Config` dependencies, `TtlCache`.
+- **Frontend** (`frontend/src`): React + openapi-fetch, types generated from the backend's
+  OpenAPI (`npm run gen:api`).
+  - `OfferRowView.tsx` renders Stats and Trends as `—` placeholders (`aria-label="No stats yet"`
+    and `"No trends yet"`).
+  - `FlowSection.tsx` renders the flow header.
+  - `useEditor.ts` runs editor requests through a serial queue.
+- **Start-up:** `uv run uvicorn app.main:app`; `app.main` builds the app at import time from
+  `load_settings()`. There is no launcher of our own.
+- **Gates:** `scripts/check.sh`: ruff, pytest under crapper (CRAP < 10), dryer (≥ 0.8), mutator
+  (full runs); frontend typecheck, lint, vitest under crapper, dryer, mutator. Playwright e2e
+  runs against the fake (`playwright.config.ts`, port 8765).
 
-**Assumptions (not observable: our campaigns have no traffic)**
-- A1. Dimensioned rows carry the dimension values under their names (`stream_id`, `offer_id`,
-  `day` as `"YYYY-MM-DD"`). Ids and money may arrive as numbers or numeric strings.
-- A2. `range.to` is inclusive.
-- A3. `conversions` = leads + sales + rejected (all postbacks); `revenue` counts approved +
-  pending money as Keitaro books it, `confirmed_revenue` only approved.
-- A4. Day buckets follow `range.timezone`.
+### Verified about Keitaro's report API (2026-11-20, read-only, own campaigns only)
 
-Parsing is lenient where data enters (A1), and the fake follows A1–A4, so a wrong guess shows up
-as one failing contract test, not as a redesign. The first campaign with real traffic settles them
-(see Phase 5).
+- `POST /report/build` → 200 with our key.
+- Request: `range` (`from`/`to` or `interval`, plus `timezone`), `dimensions`, `measures`,
+  `filters` (`name`, `operator`, `expression`), `sort`.
+- `EQUALS` / `IN_LIST` on `campaign_id` work.
+- Response `{"rows": [{column: value}], "total": n}`; no dimensions → one totals row.
+- Unknown column → 400 `{"error": "Column 'x' is not defined. ... contains only: <names>"}`.
+  The names include `stream_id`, `offer_id`, `day`, `clicks`, `leads`, `sales`, `rejected`,
+  `lead_revenue`, `sale_revenue`.
+- Glossary: `conversions` = lead + sale (rejected not included); statuses are current, so a
+  confirmed lead moves from `leads` to `sales`.
+
+**Still assumed** (vision § 5; no real grouped rows can be observed until the tracker's domain
+resolves): A1 rows carry `stream_id`, `offer_id`, `day` (`YYYY-MM-DD`), values may be numbers
+or numeric strings; A2 `range.to` is inclusive; A3 revenue = lead + sale revenue (we request
+both and add them ourselves); A4 days follow `range.timezone`. Parsing is lenient where data
+enters, and the fake follows A1–A4, so a wrong guess shows up as one failing contract check.
 
 ## Decisions locked
 
-- **D1. One report call per campaign**, `dimensions: [stream_id, offer_id, day]`, additive
-  measures only (`clicks, conversions, leads, sales, rejected, revenue, confirmed_revenue`),
-  filter `campaign_id EQUALS <id>`, range = the last `max(window, 14)` days through today.
-  The stats window and the trend are both sliced from it locally.
-- **D2. Ratios are derived, never fetched or averaged.** CR = Σconversions / Σclicks,
-  EPC = Σrevenue / Σclicks over the window. Keitaro's `cr`/`epc` per day are not summed or
-  averaged. Zero clicks → no ratio ("no clicks"), never 0 %.
-- **D3. Keyed by (flow, offer)**: one offer can sit in two flows.
-- **D4. Trend = last 7 complete days vs the 7 before** (today excluded, it is partial). The
-  sparkline shows the daily value for 14 days; the last 2 days are drawn lighter (conversions can
-  still arrive). Change shown when both halves have ≥ 100 clicks, else "not enough traffic".
-  |change| < 5 % → "flat".
-- **D5. Stats live beside the editor, not in it**: `GET /api/campaigns/{id}/stats?days=N`, its
-  own request, never stored, cached ~60 s per campaign+window. A 403, 400 or timeout shows
-  "Stats unavailable" and never blocks editing or pushing.
-- **D6. Observed traffic split** (offer clicks ÷ flow clicks) is shown as "observed", since the
-  share may have changed inside the window.
-- **D7. Calculation is a pure domain function** (`app/domain/stats.py`) with example and
-  property tests (hypothesis).
+From the vision (not reopened here):
 
-**Open for the user** (the canvas has them as tweaks): primary metric (EPC on `revenue` vs
-`confirmed_revenue` vs CR), report timezone, currency label.
+- **V1. Metrics.** Main EPC = Σ(lead_revenue + sale_revenue) ÷ Σclicks. Second CR =
+  Σ(leads + sales) ÷ Σclicks. Pending share = Σleads ÷ Σ(leads + sales + rejected). Observed
+  split = offer clicks ÷ **all** the flow's clicks (rows with no offer included). Trash is never
+  requested. Confirmed EPC and Approve % are not shown.
+- **V2. Sum first, divide once.** A ratio whose denominator is 0 is `None` ("No clicks"), never 0.
+- **V3. Periods.** Today = the partial current day; 7 / 14 / 30 = that many complete days
+  ending yesterday.
+- **V4. Trend.** EPC over days −9…−3 vs −16…−10. "Not enough traffic" if either week has
+  < 100 clicks or 0 conversions. Otherwise "within noise" if |change| < 2 × √(1/c₁ + 1/c₂)
+  (c = the week's leads + sales), else up / down. The sparkline shows daily EPC for days −14…−1,
+  the last 2 lighter.
+- **V5. Rule 5.** Flow totals = every report row of the flow over the period, including rows
+  with no offer and offers no longer in the flow.
+- **V6. Beside the editor.** Read-only, loaded separately, never stored, never part of the staged
+  state. Failures show a banner; editing and pushing are unaffected. Reload after Fetch, after
+  Push and on period change, never on a share edit.
+- **V7. Beta.** Off unless started with `--stats-beta` (or `STATS_BETA=1`). Off: placeholders,
+  no period switch, no report call.
+- **V8.** Fixed timezone from config (default UTC), currency `$`.
 
-## Phase 1: Domain calculation
+Implementation decisions (this plan):
 
-**Model: Sonnet 5**: pure function, fully specified by D2–D4; example tests plus hypothesis
-properties (Σ over flows equals the totals row; zero clicks never yields a ratio) catch mistakes.
+- **P1. Data shape first.** One additive record, `Counts(clicks, leads, sales, rejected,
+  lead_revenue, sale_revenue)`, and one report row type, `DayRow(stream_id, offer_id | None, day,
+  counts)`. Everything else (ratios, splits, trends) is a pure function of a list of `DayRow`s
+  and a date. Money is `Decimal` inside the domain, formatted only at the edge.
+- **P2. One request per campaign and period**: `dimensions [stream_id, offer_id, day]`, the six
+  measures of P1, `campaign_id EQUALS id`, `range` from `today − max(period, 16)` to `today`
+  (inclusive, A2), timezone from config.
+- **P3. The stats endpoint is the only switch the UI reads.**
+  `GET /api/campaigns/{id}/stats?period=today|7|14|30` always answers 200 with a tagged union:
+  - `{"status": "disabled"}` when the beta is off. Keitaro is never called.
+  - `{"status": "unavailable", "reason": "..."}` on a Keitaro error or timeout.
+  - `{"status": "ok", ...}` with the numbers.
 
-- **Current State.** No stats code; the columns render "—".
-- **Desired State.** `stats.summarize(rows, window, today) -> {(stream_id, offer_id): OfferStats}`
-  with `clicks, conversions, revenue, cr|None, epc|None, observed_split|None` and
-  `Trend(daily: list[float|None], change: float|None, direction: up|down|flat|thin)`.
-- **Problems.** Ratios averaged by mistake; partial today skewing trends; offers with no rows.
-- **Solutions.** Sum first, divide once; slice by complete days; offers present in the flow but
-  missing from the report get zero clicks (`direction: thin`).
+  The UI shows placeholders for `disabled` and decides nothing by itself (one decision, one
+  place). No separate "features" endpoint.
+- **P4. The endpoint knows nothing about staged edits.** It returns stats for every
+  (flow, offer) pair in the report, plus flow totals. The UI joins them to its rows by
+  `(stream_id, offer_id)`:
+  - a row with `change === "added"` → "New: no traffic yet";
+  - a row with no entry → "No clicks in N days";
+  - a removed row → greyed history.
+- **P5. The backend computes, the UI formats.** No arithmetic in TypeScript beyond formatting
+  and the sparkline's pixel coordinates.
+- **P6. Cache:** a per-(campaign, period) cache of 60 s. A Fetch passes `refresh=true`, which
+  skips it, and the fake traffic controls clear it.
+- **P7. "Today" is a dependency, not a call to `date.today()`.** `app.state.today()` returns
+  the current date in the configured timezone. Tests and the fake simulator use the same clock,
+  so day buckets and "today" never disagree.
+- **P8. Launcher:** `backend/app/__main__.py`. `uv run python -m app --stats-beta [uvicorn
+  args]` sets `STATS_BETA=1` in the environment, then hands the remaining arguments to uvicorn,
+  with `app.main:app` as the default target. The environment, not a module global, carries the
+  flag, because `app.main` reads settings at import and `--reload` imports it in a child process.
+- **P9. Fake traffic is stored as daily `DayRow`s** in the fake's state. There are two ways to
+  write them:
+  - **exact:** a test states the counts itself, which is how the formulas are proven;
+  - **simulated:** seeded, from offer profiles and the flow's current shares, for demos, e2e
+    and the statistical checks.
 
-## Phase 2: Keitaro client + fake report
+## How the formulas are proven correct
 
-**Model: Sonnet 5**: the client call mirrors existing ones; the fake follows the request shape
-verified above. **Escalate if** the live contract test (Phase 5) contradicts A1–A4.
+Four layers, each catching a different class of mistake:
 
-- **Current State.** `KeitaroClient` has no report method; `FakeKeitaro` serves no `/report/build`.
+1. **Domain examples (Phase 1).** The vision's worked numbers become literal tests:
+   - 53 ÷ 1,010 = 5.2 % (not 17.5 %);
+   - 3 % at $25 → EPC $0.75 beats 5 % at $10 → $0.50;
+   - band(90, 75) = 31 %, band(900, 750) = 10 %, so −17 % is noise in the first and real in the
+     second;
+   - the lag table (40 / 22 / 0 leads) gives CR 4.0 % → 4.0 % → 2.6 %;
+   - the flow EPC is the click-weighted blend, not the average of offer EPCs;
+   - 0 clicks → `None`.
+
+   These are what mutation testing measures against.
+2. **Domain properties (Phase 1, hypothesis).**
+   - **Additivity:** splitting any day's row into two rows with the same keys changes nothing.
+     This is the property that catches any averaging of ratios.
+   - The order of rows doesn't matter.
+   - Flow totals equal the sum over the offers plus the no-offer rows.
+   - A ratio is `None` exactly when its denominator is 0.
+   - Each observed split is between 0 and 1, and the splits sum to at most 1.
+   - The noise band shrinks as counts grow: multiplying both weeks by k > 1 never turns a real
+     change into noise.
+   - The verdict depends only on the two settled weeks: changing days −2, −1 or today never
+     changes it.
+3. **End-to-end oracle through the fake (Phases 2–4).** Tests write exact counts into the fake
+   (P9) and call `GET /stats`. They compare against values computed by hand in the test, not by
+   the code under test. A cross-check asks the fake's `/report/build` for the same range
+   **without dimensions**, the way Keitaro itself would total it. The flow totals' clicks, leads
+   and sales must equal that totals row, and CR = (leads + sales) ÷ clicks taken from it.
+4. **Statistical checks on the simulator (Phase 3).** These are seeded, so they are
+   deterministic.
+   - **Calibration of the noise band:**
+     - 200 seeds of two weeks with the same offer profile flag a "real" change in ≤ 10 % of runs
+       (a 2σ band should be about 5 %);
+     - a −40 % drift at about 150 conversions a week is flagged as down in ≥ 95 % of runs.
+
+     These two tests show the band is neither too tight nor too loose.
+   - **Profile recovery:** with lag off, 100,000 clicks at cr_all 5 %, approve 60 % and payout
+     $20 give a settled CR within 3σ of 3 % and an EPC within 3σ of $0.60.
+   - **Lag:** with lag on, yesterday's pending share is close to the configured 60 %, and the
+     trend verdict is unchanged with lag on or off.
+   - **Split:** after a push to 60 / 20 / 20, a simulated week's observed split is within ±2
+     points of the new shares. A 14-day window spanning the push shows the blend (Rule 5).
+
+## Phase 1: Domain: `app/domain/stats.py`
+
+**Model: Sonnet 5.** The maths is fully specified (V1–V5). The examples, hypothesis properties
+and mutation testing fail loudly on any mistake.
+
+- **Current State.** No stats code. `domain/flow.py` shows the house style: frozen dataclasses,
+  pure functions, notes returned rather than printed.
 - **Desired State.**
-  - `KeitaroClient.report(campaign_id, since, until, tz)` returns typed `ReportRow`s, parsed
-    leniently (str or number).
-  - `FakeKeitaro` stores daily aggregates per (campaign, flow, offer, day). Its `/report/build`
-    supports the dimensions and measures of D1, `EQUALS`/`IN_LIST` filters and a date range, and
-    answers 400 in Keitaro's format for an unknown column.
-  - Fake-only `POST /api/_fake/traffic?days=7&clicks_per_day=1000` simulates traffic. Each flow's
-    clicks are split by its **current** shares. Every fake offer has a fixed CR and payout from a
-    seeded RNG, so results are deterministic. Traffic is saved to the fake's JSON state.
-- **Solutions.** Same transport pattern as the other fake endpoints; persistence reuses `save()`.
+  ```python
+  @dataclass(frozen=True)
+  class Counts:
+      clicks: int = 0; leads: int = 0; sales: int = 0; rejected: int = 0
+      lead_revenue: Decimal = ZERO; sale_revenue: Decimal = ZERO
+      def __add__(self, other: Counts) -> Counts: ...
+      @property
+      def conversions(self) -> int: return self.leads + self.sales        # Keitaro's definition
 
-## Phase 3: API endpoint
+  @dataclass(frozen=True)
+  class DayRow:
+      stream_id: int; offer_id: int | None; day: date; counts: Counts
 
-**Model: Sonnet 5**: one read-only route in the existing pattern.
+  Period = Literal["today", 7, 14, 30]
+  def span(period: Period, today: date) -> tuple[date, date]: ...         # V3
 
-- **Desired State.** `GET /api/campaigns/{id}/stats?days=1|7|14|30` → per flow, per offer stats +
-  trend + flow totals; errors mapped to `{"available": false, "reason": ...}` with 200, so the UI
-  can show the banner without treating it as a failure.
+  @dataclass(frozen=True)
+  class Cell:                       # one offer, or a flow's totals, over the period
+      counts: Counts
+      epc: Decimal | None; cr: float | None; pending: float | None
+      split: float | None           # None for flow totals
 
-## Phase 4: UI
+  class Verdict(StrEnum): UP = "up"; DOWN = "down"; NOISE = "within_noise"; THIN = "not_enough_traffic"
 
-**Model: Sonnet 5**: follows the canvas; behaviour tests with mocked API.
+  @dataclass(frozen=True)
+  class Trend:
+      verdict: Verdict
+      daily_epc: tuple[Decimal | None, ...]      # 14 values, days −14…−1; None = no clicks that day
+      older: Counts; newer: Counts               # the two settled weeks
+      change: float | None; band: float | None   # None when THIN
 
-- Period selector in the editor header (Today / 7 / 14 / 30 days, remembered per browser).
-- Stats cell: primary metric bold, then `clicks · CR`; flow header carries flow totals.
-- Trends cell: 14-day sparkline + direction arrow (blue up / orange down, differing in lightness)
-  + "▲ 18 %"; `aria-label` spells it out.
-- States: loading skeleton, no clicks, not enough traffic, new offer (not pushed), removed offer
-  (history greyed), stats unavailable banner.
-- Stats reload after Fetch, after Push and on period change; never on share edits.
+  @dataclass(frozen=True)
+  class FlowStats:
+      stream_id: int; totals: Cell; offers: dict[int, OfferStats]   # OfferStats = Cell + Trend
 
-## Phase 5: Contract check, e2e, docs
+  def summarize(rows: Iterable[DayRow], period: Period, today: date) -> dict[int, FlowStats]: ...
+  def noise_band(c1: int, c2: int) -> float: return 2 * math.sqrt(1 / c1 + 1 / c2)
+  ```
+  Illegal states are hard to write:
+  - `Verdict.THIN` ⇔ `change is None` ⇔ `band is None`, checked in `__post_init__`.
+  - Ratios are built only through one `_ratio(num, den)` that returns `None` on 0.
+- **Problems.**
+  - Averaging daily ratios by mistake.
+  - Off-by-one on spans: Today vs complete days, an inclusive end.
+  - The trend picking up the unsettled days.
+  - A boundary case: |change| equal to the band.
+  - Float money drift.
+- **Solutions.**
+  - TDD in this order: `Counts.__add__` → `span` → `Cell` ratios → split and flow totals →
+    `noise_band` → `Trend` → `summarize`.
+  - Each step starts with the vision's worked example as the failing test, then the hypothesis
+    properties (layer 2).
+  - Boundary: the vision says "smaller than the band" is noise, so `abs(change) < band` → NOISE
+    and equal is real, pinned by a test.
+  - Money stays `Decimal` from parsing to formatting.
+  - Gates: crapper < 10, mutator with 0 survivors on `domain/stats.py`.
+
+## Phase 2: Report contract: client + fake `/report/build`
+
+**Model: Sonnet 5.** It mirrors the existing client and fake patterns, against a request shape
+verified live.
+**Escalate/stop if:** the opt-in live check (Phase 6) gets a 400 for the P2 request; that means
+the column list or the range format differs from what was verified, and P2 needs revising.
+
+- **Current State.** `KeitaroClient` has no report call. `FakeKeitaro` has no `/report/build`
+  route and no traffic.
+- **Desired State.**
+  - `KeitaroClient.report(campaign_id, since, until, tz) -> list[DayRow]` sends exactly the
+    P2 body. Parsing goes through `KtReportRow` in `keitaro/schemas.py`, which is lenient (A1):
+    - ints from `int` or `"12"`;
+    - money from number or string, into `Decimal`;
+    - `offer_id` of `None`, `0` or `""` → `None`;
+    - `day` as `YYYY-MM-DD`.
+
+    This is the only place outside data enters; inside, the types are trusted.
+  - `FakeKeitaro.traffic: dict[tuple[int, int, int | None, date], Counts]` (campaign, stream,
+    offer, day), saved in the state file under `"traffic"`. `load` treats a missing key as empty,
+    so existing `data/fake-keitaro.json` files keep working.
+  - A fake `POST /report/build` that:
+    - checks every dimension and measure against a column list (an unknown one gets Keitaro's
+      400 message);
+    - supports `EQUALS` / `IN_LIST` on `campaign_id` and an inclusive `from`/`to`;
+    - groups by any subset of `[campaign_id, stream_id, offer_id, day]`, summing measures;
+    - with no dimensions, returns one totals row;
+    - answers `{"rows": [...], "total": n}`.
+  - Test helper `fake.record(campaign_id, stream_id, offer_id, day, Counts)` for exact counts
+    (P9).
+- **Problems.**
+  - The real tracker may send strings where we expect numbers.
+  - Old state files have no `traffic`.
+  - The fake could drift from Keitaro's shape.
+- **Solutions.**
+  - Client tests with respx, covering the number and string variants and `null` offer_id.
+  - A fake test that a request with an unknown column answers 400 in Keitaro's format.
+  - A load test with a state file that has no `traffic` key.
+  - The fake's column list is a constant shared with the live check (Phase 6), so both enforce
+    the same names.
+
+## Phase 3: Fake traffic simulator + controls
+
+**Model: Sonnet 5.** It is new code, but self-contained and seeded, and the statistical checks
+(layer 4) fail if it is wrong.
+**Escalate/stop if:** the band calibration test fails with a correct simulator (false
+positives > 10 %). That would mean the band formula in the vision is too tight for EPC with
+varying payouts, and it is a question for the user, not a code fix.
+
+- **Current State.** The fake can only simulate edits made in Keitaro (detach, archive).
+- **Desired State.**
+  - `OfferProfile(cr_all, approve, payout)`. The defaults come from a seeded RNG keyed by
+    `offer_id`, so they are stable across runs, and `fake.profiles[offer_id]` overrides them.
+    `cr_all` is the chance a click produces any postback.
+  - `fake.simulate(campaign_id, days, clicks_per_day, *, today, seed, lag=False,
+    drift: dict[int, float] = {}, no_offer=0.0, today_fraction=0.5)`. For each regular flow and
+    day:
+    1. Split the day's clicks by the flow's **current** active shares, using largest
+       remainders. A `no_offer` fraction gets `offer_id=None` (Rule 5). Today gets
+       `today_fraction` of a day.
+    2. Draw postbacks ~ Binomial(clicks, cr_all × (1 + drift)^(day index)).
+    3. Assign statuses by age:
+       - lag off: all decided;
+       - lag on: undecided fraction 0.9 today, 0.6 at −1, 0.35 at −2, 0.1 up to −5, 0.02
+         after.
+
+       Then sales ~ Binomial(decided, approve), and the rest are rejected.
+    4. Money is booked on the lead: `lead_revenue = leads × payout`,
+       `sale_revenue = sales × payout`.
+    5. Write the result into `traffic`, replacing those days: idempotent, so re-running gives
+       the same state.
+  - Controls (fake mode only, in `api/fake_controls.py`):
+    - `POST /api/_fake/traffic` with `{campaign_id, days, clicks_per_day, seed?, lag?, drift?,
+      no_offer?}`;
+    - `PUT /api/_fake/offers/{id}/profile`;
+    - `DELETE /api/_fake/traffic?campaign_id=`.
+
+    All three clear the stats cache.
+  - Seed: the demo campaign gets 30 days of traffic, with a drift on 3749 (up) and 3717 (down),
+    so a fresh `KEITARO_FAKE=1 --stats-beta` run shows every state at once.
+- **Problems.**
+  - Randomness makes tests flaky.
+  - Shares may be changed mid-simulation.
+  - The demo needs both a real arrow and "within noise".
+- **Solutions.**
+  - Everything is seeded (`random.Random(seed)`, Python ≥ 3.12 `binomialvariate`).
+  - The statistical tests of layer 4 use fixed seeds and loop over seed ranges; there is no
+    wall clock.
+  - "Shares changed mid-window" is just two `simulate` calls around a push.
+  - The demo drifts are tuned in a test that asserts the seeded demo shows up, down and
+    within-noise.
+
+## Phase 4: Settings, launcher, service and endpoint
+
+**Model: Sonnet 5.** It follows existing patterns (settings, deps, routers), and the beta-off
+behaviour is pinned by a test asserting zero report requests.
+**Escalate/stop if:** `uvicorn.main` cannot take our remaining arguments unchanged (the
+`--reload` child would not inherit the flag). The launcher shape (P8) would then need another
+design.
+
+- **Current State.** There is no `stats_beta` setting, no launcher and no stats route.
+- **Desired State.**
+  - `Settings.stats_beta: bool = False` (env `STATS_BETA`), `stats_timezone: str = "UTC"`,
+    `stats_currency: str = "$"`.
+  - `app/__main__.py`:
+    ```python
+    def main(argv: list[str] | None = None) -> None:
+        parser = argparse.ArgumentParser(prog="python -m app", add_help=False)
+        parser.add_argument("--stats-beta", action="store_true")
+        ours, rest = parser.parse_known_args(argv)
+        if ours.stats_beta:
+            os.environ["STATS_BETA"] = "1"
+        if not any(not a.startswith("-") for a in rest):
+            rest = ["app.main:app", *rest]
+        uvicorn.main.main(args=rest)
+    ```
+  - `app.state.today` returns `datetime.now(ZoneInfo(settings.stats_timezone)).date()`. In
+    fake mode the simulator gets the same callable.
+  - `services/stats.py`: `StatsService(kt, today, cache).campaign(campaign_id, period,
+    refresh)`. It computes the P2 range, calls `kt.report`, and returns
+    `summarize(rows, period, today)`. A `KeitaroError` becomes the `unavailable` reason, with
+    the same wording as the canvas banner (403 → "this API key may not read reports"; timeout
+    or 5xx → "Keitaro didn't answer in time").
+  - `api/stats.py`: `GET /api/campaigns/{id}/stats?period=&refresh=` → the P3 union.
+    Pydantic models live in `api/schemas.py`:
+    - money as a string with 2+ decimals (exact);
+    - ratios as floats;
+    - `as_of` (today), `timezone`, `currency`.
+
+    Beta off returns `disabled` before any dependency touches Keitaro.
+- **Problems.**
+  - The flag has to survive `--reload`.
+  - "Today" has to be the same for the bucket and the label.
+  - Beta off must stay invisible.
+- **Solutions.**
+  - Launcher tests:
+    - `main(["--stats-beta", "--port", "9"])` with `uvicorn.main` stubbed sees `STATS_BETA=1`
+      and receives `["app.main:app", "--port", "9"]`;
+    - without the flag, the environment is untouched.
+  - App-mode tests (existing `test_app_modes.py` style):
+    - beta off → `disabled`, and `fake.requests` holds no `/report/build`;
+    - beta on → `ok`.
+  - Oracle tests (layer 3) through `LocalClient`, with exact fake counts and a fixed `today`.
+  - Run `npm run gen:api` to regenerate the TS types.
+
+## Phase 5: UI
+
+**Model: Sonnet 5.** Behaviour tests with the mocked API (`mockApi`) and pure formatters; it
+follows the canvas.
+
+- **Parity gate (before touching `OfferRowView`).** Add a characterization test: with the stats
+  endpoint answering `disabled`, the editor renders exactly what it renders today. That means:
+  - the two `—` cells with `aria-label`s "No stats yet" and "No trends yet";
+  - no period switch, no flow totals line;
+  - no request other than the editor's own plus one stats call.
+
+  No current test pins the placeholders, so this oracle must exist first. The beta-off e2e run
+  (Phase 6) repeats it in a browser.
+- **Current State.** The placeholders are hard-coded in `OfferRowView`, and `useEditor` knows
+  nothing about stats.
+- **Desired State.**
+  - `stats/useStats.ts`: `useStats(campaignId, period, epoch)` → `loading | disabled |
+    unavailable(reason) | ok(data)`. `useEditor` exposes `statsEpoch`, which goes up after
+    Fetch (sent with `refresh=true`), Push and Push all, never after an op (V6).
+  - `stats/format.ts` (pure, tested):
+    - money with the currency;
+    - percent to 1 decimal;
+    - the delta label (`▲ +42 %`, `▼ −44 %`, `within noise`);
+    - the conversion label (`80 → 72 conv. (−17 %, band ±32 %)`);
+    - the pending line, with the `today: mostly pending` wording;
+    - the aria sentence;
+    - sparkline points (the only arithmetic in the UI: pixels).
+  - Components:
+    - `PeriodSwitch` (Today / 7 / 14 / 30; remembered in `localStorage` inside try/catch,
+      default 7);
+    - `StatsCell`;
+    - `TrendCell` (inline SVG; the last 2 points drawn at lower opacity; up blue / down orange,
+      which also differ in lightness and arrow direction);
+    - the flow-header totals line;
+    - `StatsBanner` ("Stats unavailable." + reason + Try again).
+  - Row states (P4): loading skeleton, No clicks, New: no traffic yet, Not enough traffic,
+    removed greyed.
+- **Problems.**
+  - Stale responses after a fast period switch.
+  - Stats must never block edits.
+  - `localStorage` may throw.
+- **Solutions.**
+  - Each request carries its (period, epoch). A late reply for an old key is dropped, pinned
+    by a test with a delayed mock.
+  - Stats state lives outside the editor queue, so edits never wait for it.
+  - Storage access is wrapped, with a test that stubs it to throw.
+
+## Phase 6: e2e, contract check, docs
 
 **Model: Sonnet 5.**
 
-- Live test (opt-in, read-only): the report request of D1 on a throwaway campaign returns 200,
-  `rows` is a list, the totals row has the requested keys.
-- e2e on the fake: simulate traffic → stats appear → push a new split → simulate more → the
-  observed split and the trend move.
-- README: the traffic endpoint; the metric definitions.
-- When a campaign with real traffic exists: one manual look to settle A1–A4.
+- **Desired State.**
+  - **Playwright:** two web servers.
+    - Today's server on port 8765 (beta off) keeps every existing spec and adds one asserting
+      the placeholders.
+    - A new server on port 8766 starts through **the launcher itself**
+      (`uv run python -m app --stats-beta --port 8766`) with `KEITARO_FAKE=1`.
+  - `e2e/stats.spec.ts` runs on 8766:
+    1. Simulate traffic, then check the stats and trends appear with the seeded verdicts.
+    2. Switch the period and check the numbers change.
+    3. Push 60 / 20 / 20, simulate 7 days, Fetch, and check the observed split moves toward the
+       new shares.
+    4. Fail the next report (a fake control) and check the banner shows while editing still
+       works.
+  - **Live check (opt-in, `-m live`, read-only):** the P2 request on the throwaway campaign
+    returns 200, `rows` is a list, and the totals row has the six measures. It also checks that
+    every column the fake accepts is in the 400 message's list, so the fake never invents a
+    column.
+  - **README:** start with `--stats-beta` or `STATS_BETA=1`; the fake traffic controls with a
+    curl example; the metric definitions, linking the vision.
+  - **When a domain resolves** (needs user action): one manual look at real grouped rows to
+    settle A1, A2 and A4, recorded in the Change Log.
+- **Gates:** `scripts/check.sh` (full, with mutation) green; `npm run e2e` green; then
+  `/code-review medium` on the branch, findings triaged (never `--fix`).
 
-**Routing:** all phases → Sonnet 5 (each is specified here and covered by tests; the contract
-check guards the one unverified boundary).
+**Routing:** all phases → Sonnet 5. Each is specified here, and the four verification layers
+fail loudly. The tripwires in Phases 2–4 name the conditions that send a phase back for a
+decision.
 
 ## Change Log
 
 - **2026-11-20**: context: explore the report API and design Stats/Trends. Actions: read the
-  official spec, probed `/report/build` read-only on app-created campaigns, wrote this plan,
-  added the columns and a states artboard to the design canvas. Decisions: probe limited to
-  our own campaigns (shared tracker); assumptions A1–A4 recorded instead of guessed silently.
-  Verification: request/response shape verified live; dimensioned rows unverified (no traffic).
+  official spec, probed `/report/build` read-only on app-created campaigns, wrote the first
+  draft of this plan, added the columns and a states artboard to the design canvas. Decisions:
+  probe limited to our own campaigns (shared tracker); assumptions A1–A4 recorded instead of
+  guessed silently. Verification: request/response shape verified live; dimensioned rows
+  unverified (no traffic).
 - **2026-11-20**: context: the user approved the "Flow 1 check" to observe real grouped rows
-  (A1, A2, A4) without sending traffic to the offer: a throwaway campaign with the user's
-  country as GEO, clicks caught by Flow 1 (→ google.com), redirects not followed. Actions:
-  created `kce-flow1-check-…` through the app, tried 3 clicks, queried its report, archived it.
-  Decisions: stopped after the tracker refused the direct-to-server request (409) instead of
-  working around it. Verification: **blocked**. The tracker has a single domain and it has
-  no DNS record, so no campaign link can receive a click; the report stayed empty. A1, A2, A4
-  remain assumptions until a resolving domain exists (needs user action).
+  (A1, A2, A4) without sending traffic to the offer. Actions: created `kce-flow1-check-…`
+  through the app, tried 3 clicks, queried its report, archived it. Decisions: stopped after the
+  tracker refused the direct-to-server request (409) instead of working around it.
+  Verification: **blocked**. The tracker's only domain has no DNS record; A1, A2, A4 remain
+  assumptions until a resolving domain exists (needs user action).
+- **2026-11-20**: context: the vision was approved and locked (after the skeptic review and the
+  beta flag); the user asked for a detailed implementation plan covering today's system, the
+  `--stats-beta` switch and how the fake imitates statistics to prove the formulas. Actions:
+  read the backend (settings, app factory, client, fake, seed, controls, views, deps) and the
+  editor UI; rewrote this plan around the locked vision. Decisions: the stats endpoint is the
+  UI's only switch (no features endpoint); the trend window is 16 days, so the report range is
+  `max(period, 16)` days plus today; exact and simulated fake traffic; four verification layers;
+  a parity gate before replacing the placeholders. Verification: plan only, nothing implemented.
 
 ## Decisions Log
 
