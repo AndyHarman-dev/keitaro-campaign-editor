@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: Done
 ---
 
 # Stats & Trends: implementation plan
@@ -591,6 +591,73 @@ decision.
   one database per e2e server and specs split by project; the launcher defaults the target
   through `UVICORN_APP`; a Python 3.12 check of `binomialvariate`, and slow layer-4 tests timed
   against mutation. Decisions: none reopened; the vision is unchanged. Verification: plan only.
+
+- **2026-11-20**: context: the user set the goal "implement the plan /ub-mode" (plan approved,
+  status → InProgress), branch `feat/stats-impl` from `feat/stats-trends-design`. Actions:
+  Phases 1–6 built test-first: `domain/stats.py`; `KeitaroClient.report`, `KtReportRow`, the
+  fake's `/report/build` and traffic store; `keitaro/traffic.py` simulator; settings, launcher
+  `app/__main__.py`, `services/stats.py`, `api/stats.py`, fake controls (`traffic`, `profile`,
+  `fail-next`), demo traffic; the UI (`components/stats/*`, parity gate first); two-server
+  Playwright, the live report check, README and `.env.example`. Decisions (differences from the
+  plan): (1) the fake controls and the demo seed moved from Phase 3 to Phase 4, because they
+  clear the stats cache built there; `simulate` is a function `simulate(fake, …)` in
+  `keitaro/traffic.py`, not a fake method. (2) Simulator draws are keyed by a day's **age**, not
+  its date, so the demo shows the same picture every day; without it the demo test would flip
+  with the calendar. (3) The lag test needed 3,000 clicks a day: at 300 the 2 % tail adds
+  0.8 ± 0.9 paid leads a week, so the change differs by ~2 % SD and the 0.03 tolerance fails;
+  the band and the simulator were not tuned. (4) Demo: 3717 at 6 % base rate, 3749 drift +30 %
+  a week, seed 9 → 3749 ▲ +38 %, 3717 −16 % within a ±33 % band at 67 conversions, 11111 flat.
+  The plan text said "up, down and within-noise"; the Desired State's three offers give up,
+  quiet drop and flat, which is what was built. (5) The cache key includes today, so a day
+  rollover never serves yesterday's numbers. (6) Flow 1's seeded position mutant also survived
+  on main (the earlier fixer's report named the wrong line); its test is cherry-picked onto
+  `fix/seed-flow-position` for main. (7) Until the first stats reply the UI looks like the beta
+  is off, so the beta-off editor never flashes a skeleton. Verification: calibration measured
+  false positives 11/200 (5.5 %), power 200/200 at 273 → 165 conversions; seeded
+  `binomialvariate` identical on Python 3.12/3.13/3.14; see the commits for gate results.
+
+- **2026-11-20**: context: post-implementation `/code-review medium` on
+  `feat/stats-trends-design...feat/stats-impl` (7 findings). Actions: applied 5 — a malformed
+  200 report now raises `UnreadableReport` and shows "Keitaro sent a report this app can't
+  read" instead of escaping as a 500; null measures count as 0; `simulate` replaces every
+  offer's row for a re-simulated day; the pending line hides at 0%; `KeyedTtlCache` evicts
+  expired keys. Decisions: rejected 2 as locked by this plan — the "didn't answer in time"
+  wording (Phase 4) and "New: no traffic yet" for any `added` row, even one re-added with
+  history (Phase 5). Also found in e2e: the demo assertion's regex ignored the ▲ arrow; the
+  spec was fixed, not the app. Verification: verified — 300 pytest, 82 vitest, 14 Playwright,
+  mutator 0 survivors (backend 274 + frontend 284 sites, `--mutate-all`), crapper < 10,
+  dryer clean. Needs user action: confirm Done; decide merge into `feat/stats-trends-design`.
+
+- **2026-11-20**: context: the user asked for a merge request and an overall review of it;
+  opened PR #3 (`feat/stats-impl` → `feat/stats-trends-design`) and ran `/code-review medium 3`
+  (9 findings). Actions: applied 7 — report rows with no flow are skipped instead of failing the
+  report; `offer_id`/`stream_id` "0" mean none; a `refresh` drops every cached period of that
+  campaign (switching period after a push showed pre-push numbers); EPCs under a cent show 4
+  decimals; the launcher no longer takes `--st…` for `--stats-beta` and the beta-off e2e server
+  forces `STATS_BETA=0`; a misspelt `STATS_TIMEZONE` is refused with a clear message; fake
+  traffic sizes are bounded. Decisions: rejected 2 — no stats reload after a failed push (the plan
+  reloads after Push; a conflict means Keitaro changed), and a distinct label when the older week
+  earned $0 (the plan's THIN rule: the change is undefined). Fake profiles stay in memory, as
+  documented. Verification: verified — 307 pytest, 83 vitest, 14 Playwright; mutator 0 survivors
+  on touched files; crapper < 10; dryer clean.
+
+- **2026-11-20**: context: the user asked for one more review of PR #3 (7 findings) and to fix
+  the ones worth fixing. Actions: applied 4 — a report in flight while a refresh lands no longer
+  writes pre-push numbers back into the cache (`KeyedTtlCache.stamp()`, replaced on every drop
+  or clear); `STATS_TIMEZONE` is checked by loading the zone, so a host without a zone list still
+  starts on UTC (the previous round's check would have refused it); a change that rounds to 0%
+  prints "0%" without a sign; a net-negative amount reads "−$0.50". Decisions: left as is — the
+  demo seed growing a persisted fake state file (fake mode with a state file only; the user chose
+  to skip it), the lenient offer_id 0 parse (speculative; the live contract check covers report
+  shape), and stats reload after a failed push (already rejected; plan rule). Verification:
+  verified — 311 pytest, 85 vitest, 14 Playwright; mutator 0 survivors on touched files; crapper
+  < 10; dryer clean.
+
+- **2026-11-20**: context: the user tested the beta on the fake tracker and confirmed the plan
+  done; asked for the run combinations in the README and a merge to main. Actions: README "Run"
+  lists production-style real/fake × stats on/off; status set to Done; PR #3 merged into
+  `feat/stats-trends-design`, then that branch into `main`. Decisions: none. Verification:
+  verified by the user (manual run); docs-only change after the last green suite.
 
 ## Decisions Log
 

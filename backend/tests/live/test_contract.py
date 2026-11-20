@@ -6,12 +6,14 @@ clean_archive endpoint and never read /campaigns/deleted (slow).
 """
 
 import secrets
+from datetime import date, timedelta
 
 import pytest
 
 from app.config import get_settings
 from app.domain.flow import OfferLink
-from app.keitaro.client import KeitaroClient, KeitaroError
+from app.keitaro.client import REPORT_MEASURES, KeitaroClient, KeitaroError
+from app.keitaro.fake import REPORT_COLUMNS
 
 pytestmark = pytest.mark.live
 
@@ -61,11 +63,33 @@ async def test_fake_matches_the_real_tracker(kt):
         # PUT with offers replaces the list; [] empties it
         await kt.put_stream_offers(flow2.id, [])
         assert (await kt.get_stream(flow2.id)).links == []
+
+        await _report_contract(kt, campaign.id)
     finally:
         await kt.archive_campaign(campaign.id)
     with pytest.raises(KeitaroError) as err:
         await kt.get_campaign(campaign.id)
     assert err.value.status == 404
+
+
+async def _report_contract(kt: KeitaroClient, campaign_id: int) -> None:
+    """Read-only, on our own throwaway campaign: the stats request (plan P2) is accepted, the
+    totals row has our six measures, and the fake accepts no column Keitaro doesn't have."""
+    today = date.today()
+    rows = await kt.report(campaign_id, today - timedelta(days=16), today, "UTC")
+    assert isinstance(rows, list)
+    window = {"range": {"from": str(today - timedelta(days=16)), "to": str(today),
+                        "timezone": "UTC"},
+              "filters": [{"name": "campaign_id", "operator": "EQUALS",
+                           "expression": campaign_id}]}
+    totals = await kt._request("POST", "/report/build",
+                               json={**window, "dimensions": [], "measures": REPORT_MEASURES})
+    assert set(REPORT_MEASURES) <= set(totals["rows"][0])
+    with pytest.raises(KeitaroError) as err:
+        await kt._request("POST", "/report/build",
+                          json={**window, "dimensions": [], "measures": ["kce_no_such_column"]})
+    assert err.value.status == 400
+    assert all(name in err.value.message for name in REPORT_COLUMNS)
 
 
 async def test_editor_round_trip_through_the_api(kt, tmp_path):

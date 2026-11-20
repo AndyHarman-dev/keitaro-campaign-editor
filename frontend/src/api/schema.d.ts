@@ -229,6 +229,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats
+         * @description Per flow: totals over the period and, per offer, its numbers and trend. Always 200.
+         */
+        get: operations["stats_api_campaigns__campaign_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -277,6 +297,29 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+        };
+        /** CellOut */
+        CellOut: {
+            /** Clicks */
+            clicks: number;
+            /** Leads */
+            leads: number;
+            /** Sales */
+            sales: number;
+            /** Rejected */
+            rejected: number;
+            /** Conversions */
+            conversions: number;
+            /** Revenue */
+            revenue: string;
+            /** Epc */
+            epc: string | null;
+            /** Cr */
+            cr: number | null;
+            /** Pending */
+            pending: number | null;
+            /** Split */
+            split: number | null;
         };
         /** CreateCampaignIn */
         CreateCampaignIn: {
@@ -337,6 +380,14 @@ export interface components {
         /** FlowProblemBody */
         FlowProblemBody: {
             detail: components["schemas"]["FlowProblem"];
+        };
+        /** FlowStatsOut */
+        FlowStatsOut: {
+            /** Stream Id */
+            stream_id: number;
+            totals: components["schemas"]["CellOut"];
+            /** Offers */
+            offers: components["schemas"]["OfferStatsOut"][];
         };
         /** FlowView */
         FlowView: {
@@ -425,6 +476,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** OfferStatsOut */
+        OfferStatsOut: {
+            /** Offer Id */
+            offer_id: number;
+            cell: components["schemas"]["CellOut"];
+            trend: components["schemas"]["TrendOut"];
+        };
         /** OpRequest */
         OpRequest: {
             /** Version */
@@ -486,6 +544,48 @@ export interface components {
             /** Share */
             share: number;
         };
+        /** StatsDisabled */
+        StatsDisabled: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "disabled";
+        };
+        /** StatsOk */
+        StatsOk: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ok";
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "today" | "7" | "14" | "30";
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Timezone */
+            timezone: string;
+            /** Currency */
+            currency: string;
+            /** Flows */
+            flows: components["schemas"]["FlowStatsOut"][];
+        };
+        /** StatsUnavailable */
+        StatsUnavailable: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "unavailable";
+            /** Reason */
+            reason: string;
+        };
         /** TogglePinIn */
         TogglePinIn: {
             /**
@@ -495,6 +595,22 @@ export interface components {
             kind: "toggle_pin";
             /** Offer Id */
             offer_id: number;
+        };
+        /** TrendOut */
+        TrendOut: {
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "up" | "down" | "within_noise" | "not_enough_traffic";
+            /** Daily Epc */
+            daily_epc: (string | null)[];
+            older: components["schemas"]["WeekOut"];
+            newer: components["schemas"]["WeekOut"];
+            /** Change */
+            change: number | null;
+            /** Band */
+            band: number | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -523,6 +639,15 @@ export interface components {
             versions: {
                 [key: string]: number;
             };
+        };
+        /** WeekOut */
+        WeekOut: {
+            /** Clicks */
+            clicks: number;
+            /** Conversions */
+            conversions: number;
+            /** Epc */
+            epc: string | null;
         };
     };
     responses: never;
@@ -1140,6 +1265,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeitaroFailureBody"];
+                };
+            };
+        };
+    };
+    stats_api_campaigns__campaign_id__stats_get: {
+        parameters: {
+            query?: {
+                period?: "today" | "7" | "14" | "30";
+                refresh?: boolean;
+            };
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsDisabled"] | components["schemas"]["StatsUnavailable"] | components["schemas"]["StatsOk"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

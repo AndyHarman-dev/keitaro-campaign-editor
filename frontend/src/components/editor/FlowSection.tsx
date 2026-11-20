@@ -5,6 +5,8 @@ import OfferRowView from './OfferRowView'
 import { pendingLabel } from './rowLabels'
 import type { FlowProblem, OpIn } from './useEditor'
 import BusyButton from '../BusyButton'
+import { noClicksLabel, totalsLabel, type PeriodKey } from '../stats/format'
+import type { StatsState } from '../stats/useStats'
 
 type Flow = Schemas['FlowView']
 type Offer = Schemas['OfferOut']
@@ -19,6 +21,16 @@ interface Props {
   onFetch: () => void
   fetching: boolean
   onReload: () => void
+  stats: StatsState
+  period: PeriodKey
+}
+
+/** Rule 5: from Keitaro, over the period, before your edits (every row of the flow). */
+function FlowTotals({ flow, stats, period }: { flow: Flow; stats: StatsState; period: PeriodKey }) {
+  if (stats.status !== 'ok') return null
+  const totals = stats.data.flows.find((f) => f.stream_id === flow.stream_id)?.totals
+  const text = totals && totals.clicks > 0 ? totalsLabel(totals, period, stats.data.currency) : noClicksLabel(period)
+  return <span className="mono small flow-totals">{text}</span>
 }
 
 function ProblemBanner({ problem, onFetch, fetching, onReload }: { problem: FlowProblem; onFetch: () => void; fetching: boolean; onReload: () => void }) {
@@ -52,13 +64,15 @@ function AddOffer({ flow, onAdd }: { flow: Flow; onAdd: (offerId: number) => voi
   )
 }
 
-export default function FlowSection({ flow, problem, onOp, onForget, onPush, onCancel, onFetch, fetching, onReload }: Props) {
+export default function FlowSection({ flow, problem, onOp, onForget, onPush, onCancel, onFetch, fetching, onReload, stats, period }: Props) {
+  const offers = stats.status === 'ok' ? stats.data.flows.find((f) => f.stream_id === flow.stream_id)?.offers ?? [] : []
   return (
     <section aria-label={flow.name} className={`flow${flow.dirty ? ' dirty' : ''}`}>
       <div className="flow-head">
         <div className="flow-title">
           <h2>{flow.name} <span className="mono muted">#{flow.stream_id}</span></h2>
           <span className="muted small">{flow.summary} · total {flow.total}%</span>
+          <FlowTotals flow={flow} stats={stats} period={period} />
           {flow.dirty && <span className="tag tag-pending">{pendingLabel(flow.pending_count)}</span>}
         </div>
         {flow.dirty && (
@@ -75,7 +89,10 @@ export default function FlowSection({ flow, problem, onOp, onForget, onPush, onC
           <span role="columnheader">Stats</span><span role="columnheader">Trends</span>
           <span role="columnheader" className="actions">Actions</span>
         </div>
-        {flow.rows.map((r) => <OfferRowView key={r.offer_id} row={r} onOp={onOp} onForget={onForget} />)}
+        {flow.rows.map((r) => (
+          <OfferRowView key={r.offer_id} row={r} onOp={onOp} onForget={onForget} period={period}
+            stats={{ state: stats, offer: offers.find((o) => o.offer_id === r.offer_id), isNew: r.change === 'added' }} />
+        ))}
       </div>
       <AddOffer flow={flow} onAdd={(id) => onOp({ kind: 'add', offer_id: id })} />
     </section>

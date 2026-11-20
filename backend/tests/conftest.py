@@ -31,7 +31,8 @@ def fake() -> FakeKeitaro:
 def settings() -> Settings:
     return Settings(_env_file=None, keitaro_base_url="https://tracker.example",
                     keitaro_api_key=SecretStr("k" * 32), keitaro_default_domain="track.example",
-                    keitaro_default_group="Team", keitaro_default_source="Source")
+                    keitaro_default_group="Team", keitaro_default_source="Source",
+                    stats_beta=False)
 
 
 @pytest.fixture
@@ -51,8 +52,10 @@ def api(fake, settings, tmp_path):
         with sessions() as s:
             yield s
 
+    stats_cache = deps.KeyedTtlCache(60)  # one per test: the app object is shared
     app.dependency_overrides = {deps.get_keitaro: keitaro, deps.get_session: session,
-                                deps.get_settings: lambda: settings}
+                                deps.get_settings: lambda: settings,
+                                deps.get_stats_cache: lambda: stats_cache}
     deps.offers_cache.clear()
     yield LocalClient(app)
     app.dependency_overrides = {}

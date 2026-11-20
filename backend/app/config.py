@@ -1,7 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -24,9 +25,23 @@ class Settings(BaseSettings):
         default=False, description="Use the in-process fake tracker (demos and e2e; no key needed)")
     keitaro_fake_state: Path | None = Field(
         default=None, description="Fake mode: JSON file the fake tracker is saved to and loaded from")
+    stats_beta: bool = Field(
+        default=False, description="Show stats & trends (beta): `python -m app --stats-beta`")
+    stats_timezone: str = Field(default="UTC", description="Timezone that report days follow")
+    stats_currency: str = Field(default="$", description="Currency sign shown with money")
     allowed_hosts: list[str] = Field(
         default=["localhost", "127.0.0.1"],
         description="Host names the API answers to; add a LAN address to open it from another device")
+
+    @field_validator("stats_timezone")
+    @classmethod
+    def _known_zone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)  # loads the zone itself: works without a full zone list
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError(
+                f"STATS_TIMEZONE {value!r} is not a known IANA zone, e.g. Europe/Moscow") from None
+        return value
 
     @property
     def keitaro_configured(self) -> bool:
