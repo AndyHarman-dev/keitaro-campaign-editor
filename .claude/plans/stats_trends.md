@@ -641,6 +641,18 @@ decision.
   documented. Verification: verified — 307 pytest, 83 vitest, 14 Playwright; mutator 0 survivors
   on touched files; crapper < 10; dryer clean.
 
+- **2026-11-20**: context: the user asked for one more review of PR #3 (7 findings) and to fix
+  the ones worth fixing. Actions: applied 4 — a report in flight while a refresh lands no longer
+  writes pre-push numbers back into the cache (`KeyedTtlCache.stamp()`, replaced on every drop
+  or clear); `STATS_TIMEZONE` is checked by loading the zone, so a host without a zone list still
+  starts on UTC (the previous round's check would have refused it); a change that rounds to 0%
+  prints "0%" without a sign; a net-negative amount reads "−$0.50". Decisions: left as is — the
+  demo seed growing a persisted fake state file (fake mode with a state file only; the user chose
+  to skip it), the lenient offer_id 0 parse (speculative; the live contract check covers report
+  shape), and stats reload after a failed push (already rejected; plan rule). Verification:
+  verified — 311 pytest, 85 vitest, 14 Playwright; mutator 0 survivors on touched files; crapper
+  < 10; dryer clean.
+
 ## Decisions Log
 
 <!-- Owner's hand only. Format: YYYY-MM-DD: context, problem, decision (mark overrides/rejections). -->

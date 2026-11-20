@@ -71,26 +71,38 @@ class TtlCache:
 
 
 class KeyedTtlCache:
-    """One TtlCache per key, e.g. stats per (campaign, period)."""
+    """One TtlCache per key, e.g. stats per (campaign, period).
+
+    `stamp()` before a slow read and `put(..., stamp=)` after it: a drop or clear in between
+    means the value may predate it, so it isn't stored.
+    """
 
     def __init__(self, ttl_seconds: float, clock: Callable[[], float] = time.monotonic):
         self._ttl = ttl_seconds
         self._clock = clock
         self._items: dict[Hashable, TtlCache] = {}
+        self._epoch = object()  # replaced on every drop or clear
+
+    def stamp(self) -> object:
+        return self._epoch
 
     def get(self, key: Hashable) -> Any:
         item = self._items.get(key)
         return None if item is None else item.get()
 
-    def put(self, key: Hashable, value: Any) -> None:
+    def put(self, key: Hashable, value: Any, stamp: object | None = None) -> None:
+        if stamp is not None and stamp is not self._epoch:
+            return
         self._items = {k: c for k, c in self._items.items() if c.get() is not None}
         self._items.setdefault(key, TtlCache(self._ttl, self._clock)).put(value)
 
     def drop(self, matches: Callable[[Hashable], bool]) -> None:
         self._items = {k: c for k, c in self._items.items() if not matches(k)}
+        self._epoch = object()
 
     def clear(self) -> None:
         self._items.clear()
+        self._epoch = object()
 
 
 StatsCache = Annotated[KeyedTtlCache, Depends(get_stats_cache)]

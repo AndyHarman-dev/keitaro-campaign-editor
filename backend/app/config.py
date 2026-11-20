@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from zoneinfo import available_timezones
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,8 +36,11 @@ class Settings(BaseSettings):
     @field_validator("stats_timezone")
     @classmethod
     def _known_zone(cls, value: str) -> str:
-        if value not in available_timezones():
-            raise ValueError(f"STATS_TIMEZONE {value!r} is not a known IANA zone, e.g. Europe/Moscow")
+        try:
+            ZoneInfo(value)  # loads the zone itself: works without a full zone list
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError(
+                f"STATS_TIMEZONE {value!r} is not a known IANA zone, e.g. Europe/Moscow") from None
         return value
 
     @property

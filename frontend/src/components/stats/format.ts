@@ -13,8 +13,8 @@ export const periodLabel = (p: PeriodKey) => (p === 'today' ? 'Today' : `${p} da
 /** Two decimals; four for a non-zero amount under a cent, which the backend keeps exact. */
 export function money(value: string | null, currency: string): string {
   if (value === null) return '—'
-  const n = Number(value)
-  return `${currency}${n.toFixed(n !== 0 && Math.abs(n) < 0.01 ? 4 : 2)}`
+  const n = Math.abs(Number(value))
+  return `${Number(value) < 0 ? '−' : ''}${currency}${n.toFixed(n !== 0 && n < 0.01 ? 4 : 2)}`
 }
 
 export function percent(value: number | null): string {
@@ -50,7 +50,12 @@ export function totalsLabel(cell: Cell, p: PeriodKey, currency: string): string 
 }
 
 const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`
-const signed = (x: number) => `${x >= 0 ? '+' : '−'}${pct(x)}`
+/** "+42%", "−17%"; a change that rounds to 0% gets no sign. */
+const signed = (x: number) => {
+  const shown = pct(x)
+  if (shown === '0%') return shown
+  return `${x > 0 ? '+' : '−'}${shown}`
+}
 
 export type Direction = 'up' | 'down' | 'noise'
 

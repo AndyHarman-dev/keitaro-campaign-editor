@@ -11,7 +11,7 @@ from app.api.deps import KeyedTtlCache
 from app.domain.stats import Counts
 from app.keitaro.client import KeitaroError, UnreadableReport
 from app.main import app, create_app
-from app.services.stats import unavailable_reason
+from app.services.stats import campaign_stats, unavailable_reason
 from tests.local import LocalClient
 from tests.test_app_modes import _settings
 
@@ -163,6 +163,20 @@ def test_a_refresh_drops_every_cached_period_of_that_campaign(stats, fake):
     assert clicks(CID + 1, 7) == 10  # other campaigns keep their cache
 
 
+async def test_a_report_that_was_in_flight_during_a_refresh_is_not_cached(settings):
+    """Request A starts, a push's refresh lands while A waits on Keitaro, A must not cache."""
+    cache = KeyedTtlCache(60)
+
+    class SlowTracker:
+        async def report(self, *_):
+            cache.drop(lambda key: key[0] == CID)  # the refresh lands mid-flight
+            return []
+
+    result = await campaign_stats(SlowTracker(), settings, cache, CID, "7", TODAY, False)
+    assert result.status == "ok"
+    assert cache.get((CID, "7", TODAY)) is None
+
+
 def test_traffic_control_refuses_absurd_sizes(tmp_path):
     api = beta_app(tmp_path)
     for body in ({"days": -1}, {"days": 400}, {"clicks_per_day": -5},
@@ -189,6 +203,17 @@ def test_keyed_cache_drops_matching_keys():
         cache.put(key, key)
     cache.drop(lambda key: key[0] == 1)
     assert [cache.get(k) for k in [(1, "7"), (1, "30"), (2, "7")]] == [None, None, (2, "7")]
+
+
+def test_a_stamp_taken_before_a_drop_or_clear_stores_nothing():
+    cache = KeyedTtlCache(60)
+    for invalidate in (lambda: cache.drop(lambda _: False), cache.clear):
+        stamp = cache.stamp()
+        invalidate()
+        cache.put("k", 1, stamp=stamp)
+        assert cache.get("k") is None
+    cache.put("k", 2, stamp=cache.stamp())
+    assert cache.get("k") == 2
 
 
 def test_keyed_cache_keeps_keys_apart_and_expires():

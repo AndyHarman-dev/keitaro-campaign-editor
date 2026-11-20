@@ -73,6 +73,7 @@ async def campaign_stats(kt: KeitaroClient, settings: Settings, cache: KeyedTtlC
     if cached is not None:
         return cached
     period = PERIODS[param]
+    stamp = cache.stamp()
     try:
         rows = await kt.report(campaign_id, *report_range(period, today), settings.stats_timezone)
     except KeitaroError as err:
@@ -80,5 +81,5 @@ async def campaign_stats(kt: KeitaroClient, settings: Settings, cache: KeyedTtlC
     flows = summarize(rows, period, today)
     result = StatsOk(status="ok", period=param, as_of=today, timezone=settings.stats_timezone,
                      currency=settings.stats_currency, flows=[_flow(f) for f in flows.values()])
-    cache.put(key, result)
+    cache.put(key, result, stamp=stamp)  # not if a refresh landed while we waited on Keitaro
     return result

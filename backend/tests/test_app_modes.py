@@ -153,3 +153,15 @@ def test_spa_fallback_stays_out_of_the_openapi_schema(tmp_path):
 def test_a_misspelt_stats_timezone_is_refused_with_a_clear_message(tmp_path):
     with pytest.raises(ValueError, match="STATS_TIMEZONE"):
         _settings(tmp_path, stats_timezone="Europe/Nowhere")
+
+
+def test_the_timezone_check_does_not_need_the_zone_list(tmp_path, monkeypatch):
+    # a host without a tz database lists no zones, yet UTC must still start the app
+    monkeypatch.setattr("zoneinfo.available_timezones", set)
+    monkeypatch.setattr("app.config.available_timezones", set, raising=False)
+    assert _settings(tmp_path).stats_timezone == "UTC"
+
+
+def test_a_path_like_timezone_is_refused(tmp_path):
+    with pytest.raises(ValueError, match="STATS_TIMEZONE"):
+        _settings(tmp_path, stats_timezone="../etc/passwd")

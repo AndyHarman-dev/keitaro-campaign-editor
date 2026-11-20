@@ -29,6 +29,11 @@ describe('numbers', () => {
     expect(money('0', '$')).toBe('$0.00')
   })
 
+  it('puts the minus before the currency for a net-negative amount', () => {
+    expect(money('-0.5', '$')).toBe('−$0.50')
+    expect(money('-0.0042', '€')).toBe('−€0.0042')
+  })
+
   it('formats ratios as percent to one decimal', () => {
     expect(percent(0.0525)).toBe('5.3%')
     expect(percent(0)).toBe('0.0%')
@@ -81,6 +86,14 @@ describe('trend', () => {
     expect(direction(t)).toBe('noise')
     expect(convLabel(t)).toBe('80 → 72 conv. (−17%, band ±32%)')
     expect(convLabel(trend({ verdict: 'up', change: 0.42, band: 0.2 }))).toBe('80 → 72 conv.')
+  })
+
+  it('prints a change that rounds to zero without a sign', () => {
+    const tiny = trend({ change: -0.003, band: 0.12 })
+    expect(convLabel(tiny)).toBe('80 → 72 conv. (0%, band ±12%)')
+    expect(trendAria(tiny, '$')).toMatch(/change 0% is within noise$/)
+    expect(convLabel(trend({ change: 0.004, band: 0.12 }))).toContain('(0%,')
+    expect(convLabel(trend({ change: -0.005, band: 0.12 }))).toContain('(−1%,')
   })
 
   it('says nothing for thin weeks', () => {
