@@ -1,0 +1,37 @@
+[project]
+name = "keitaro-campaign-editor"
+version = "0.1.0"
+description = "Create Keitaro campaigns and edit their offer flows with a staged commit/push workflow."
+readme = "../README.md"
+requires-python = ">=3.12"
+license = { file = "../LICENSE" }
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.170.16",
+    "pytest>=8.3",
+    "pytest-asyncio>=1.5.0",
+    "pytest-cov>=7.1.0",
+    "respx>=0.21",
+    "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-m 'not live'"
+markers = ["live: opt-in checks against the real tracker (writes a throwaway campaign)"]

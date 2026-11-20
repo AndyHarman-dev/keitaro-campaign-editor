@@ -1,0 +1,42 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# local data
+*.db
+*.sqlite3
+data/
+
+# node
+node_modules/
+dist/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+
+# claude local
+.claude/settings.local.json
+
+# design canvas scratch (published as an artifact)
+.claude/design-canvas/
+
+# quality tooling output
+.metrics/
+target/
+coverage/
+lcov.info
+.coverage
+coverage.xml
+test-results/
+playwright-report/
