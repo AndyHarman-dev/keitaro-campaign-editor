@@ -213,8 +213,8 @@ arrive rather than the day of the click. We assume click date, Keitaro's default
 ## 4. Approach (no implementation detail)
 
 - **One report per campaign**, grouped by flow, offer and day, countable measures only, covering
-  the longest window needed (30 days for the 30-day view, else 14 for the trend). Every column
-  is cut from that one answer.
+  the longest window needed (30 complete days for the 30-day view, else the 16 the trend needs,
+  plus today). Every column is cut from that one answer.
 - **Stats sit beside the editor, not inside it.** They are read-only, loaded separately, never
   saved, and never part of the staged edit state. A refused or slow report shows a banner;
   editing and pushing are unaffected. They reload after Fetch, after Push and when the period
