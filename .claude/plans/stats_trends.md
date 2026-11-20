@@ -138,6 +138,14 @@ check guards the one unverified boundary).
   added the columns and a states artboard to the design canvas. Decisions: probe limited to
   our own campaigns (shared tracker); assumptions A1–A4 recorded instead of guessed silently.
   Verification: request/response shape verified live; dimensioned rows unverified (no traffic).
+- **2026-11-20**: context: the user approved the "Flow 1 check" to observe real grouped rows
+  (A1, A2, A4) without sending traffic to the offer: a throwaway campaign with the user's
+  country as GEO, clicks caught by Flow 1 (→ google.com), redirects not followed. Actions:
+  created `kce-flow1-check-…` through the app, tried 3 clicks, queried its report, archived it.
+  Decisions: stopped after the tracker refused the direct-to-server request (409) instead of
+  working around it. Verification: **blocked**. The tracker has a single domain and it has
+  no DNS record, so no campaign link can receive a click; the report stayed empty. A1, A2, A4
+  remain assumptions until a resolving domain exists (needs user action).
 
 ## Decisions Log
 
