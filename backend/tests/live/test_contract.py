@@ -72,13 +72,13 @@ async def test_editor_round_trip_through_the_api(kt, tmp_path):
     """create (saga) → open → external change → fetch → edit → push → re-read, live."""
     import uuid
 
-    from fastapi.testclient import TestClient
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     from app.api import deps
     from app.db.session import Base
     from app.main import app
+    from tests.local import LocalClient
 
     engine = create_engine(f"sqlite:///{tmp_path / 'live.db'}")
     Base.metadata.create_all(engine)
@@ -91,7 +91,7 @@ async def test_editor_round_trip_through_the_api(kt, tmp_path):
     app.dependency_overrides = {deps.get_session: session,
                                 deps.get_settings: lambda: get_settings()}
     deps.offers_cache.clear()
-    api = TestClient(app)
+    api = LocalClient(app)
     offer_id = (await kt.list_offers())[0].id
     created = api.post("/api/campaigns", json={
         "name": f"kce-contract-{uuid.uuid4().hex[:6]}", "geos": ["AU"], "offer_id": offer_id,

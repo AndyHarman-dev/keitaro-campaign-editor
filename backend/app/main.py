@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from app.api import campaigns, errors, flows
+from app.api import campaigns, errors, flows, guard
 from app.api.deps import Config, Keitaro
 from app.api.fake_controls import fake_controls
 from app.config import REPO_ROOT, Settings
@@ -75,6 +75,7 @@ def create_app(settings: Settings, frontend_dist: Path = FRONTEND_DIST) -> FastA
     app.include_router(campaigns.router)
     app.include_router(flows.router)
     errors.install(app)
+    guard.install(app, settings.allowed_hosts)
     _serve_frontend(app, frontend_dist)
     return app
 

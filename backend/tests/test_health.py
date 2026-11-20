@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from app.main import app
+from tests.local import LocalClient
 
 
 def test_health():
-    assert TestClient(app).get("/api/health").json() == {"status": "ok"}
+    assert LocalClient(app).get("/api/health").json() == {"status": "ok"}

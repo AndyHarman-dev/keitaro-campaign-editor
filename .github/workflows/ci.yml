@@ -1,0 +1,99 @@
+# Quality gates for every pull request and every push to main.
+# Nothing here talks to a real Keitaro: tests use the in-process fake tracker and no secrets exist.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * *"   # nightly: full run including mutation testing
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"   # the minimum in backend/pyproject.toml
+  NODE_VERSION: "22"
+  # Pinned commits of the CRAP / duplication / mutation tools used by scripts/check.sh.
+  CRAPPER_SHA: c757ec79a6c15dc815238bbd9c2f4601eb54d3cc
+  DRYER_SHA: 66ff6d21a42c04afcad89c78a80066176d1294b0
+  MUTATOR_SHA: 830ec7e9c39664d753f8699015bc796df67727b9
+
+jobs:
+  checks:
+    name: Lint, types, tests, CRAP, duplication${{ github.event_name == 'schedule' && ', mutation' || '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3   # exact tags only; no moving v10 tag
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install quality tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools" "$RUNNER_TEMP/bin"
+          for tool in crapper:$CRAPPER_SHA dryer:$DRYER_SHA mutator:$MUTATOR_SHA; do
+            name=${tool%%:*}; sha=${tool##*:}
+            git clone --quiet "https://github.com/unclebob/$name.git" "$RUNNER_TEMP/tools/$name"
+            git -C "$RUNNER_TEMP/tools/$name" checkout --quiet "$sha"
+            # A wrapper, not a symlink: each tool finds its own folder from $0.
+            printf '#!/bin/sh\nexec "%s" "$@"\n' "$RUNNER_TEMP/tools/$name/$name" > "$RUNNER_TEMP/bin/$name"
+            chmod +x "$RUNNER_TEMP/bin/$name"
+          done
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: |
+          (cd backend && uv sync --locked)
+          (cd frontend && npm ci)
+      - name: Migrations match the models
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/ci.db
+        run: uv run alembic upgrade head && uv run alembic check
+      - name: scripts/check.sh${{ github.event_name != 'schedule' && ' --fast' || '' }}
+        run: scripts/check.sh ${{ github.event_name != 'schedule' && '--fast' || '' }}
+
+  e2e:
+    name: End-to-end (Playwright, fake tracker)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3   # exact tags only; no moving v10 tag
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          (cd backend && uv sync --locked)
+          (cd frontend && npm ci && npx playwright install --with-deps chromium)
+      - name: npm run e2e
+        working-directory: frontend
+        run: npm run e2e
+      - name: Keep traces and screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-results
+          path: frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
