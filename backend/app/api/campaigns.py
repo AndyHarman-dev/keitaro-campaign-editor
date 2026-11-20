@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_keitaro, get_session, get_settings, offers_cache
+from app.api.deps import cached_offers, get_keitaro, get_session, get_settings
 from app.api.schemas import (
     CampaignOut,
     CreateCampaignIn,
@@ -52,10 +52,7 @@ async def lookups(kt: Keitaro, settings: Config) -> LookupsOut:
 
 @router.get("/offers")
 async def search_offers(kt: Keitaro, q: str = "") -> list[OfferOut]:
-    offers = offers_cache.get()
-    if offers is None:
-        offers = await kt.list_offers()
-        offers_cache.put(offers)
+    offers = await cached_offers(kt)
     return [OfferOut(id=o.id, name=o.name) for o in offers if _matches(q, o.id, o.name)]
 
 

@@ -677,6 +677,25 @@ fast and locally.
   (mutation baseline). Verification: verified — 115 backend tests, 7 frontend tests,
   `npm run gen:api && npm run build` ok, `scripts/check.sh --fast` green; mutator `app/api`,
   `app/services`, `frontend/src` all killed.
+- **2026-11-20 — Phase 6.** Context: the editor's use cases, the only code that writes offer
+  lists. Actions: `app/services/flows.py` (`FlowService`: open, fetch, apply, forget, cancel,
+  push with signature check → PUT → re-read, push_all with per-flow conflicts),
+  `app/api/views.py` (row `change` = added/removed/restored/share, `base_share`),
+  `app/api/flows.py` (editor endpoints; every mutation returns the whole `EditorView` with
+  notes), 409 `{kind: conflict|stale}`, 404, 422 mapped in `errors.py`;
+  `Settings.campaign_admin_url` for "View in KT"; `cached_offers` shared by search and names.
+  Decisions: when an op or a fetch leaves `working == base`, pending is cleared, so a
+  cancelled-out edit leaves no residue. Push of a clean flow sends nothing. Forget on a
+  non-archived row answers 422 (`NotArchived`). Forget does not rebalance: Keitaro's
+  shares stay visible as they are. Tests corrected while writing them (my expectations, not
+  the code): add→remove leaves a dirty "added, now removed" row (by design: the offer is
+  remembered), and names come from the cache, so "no writes" is asserted instead of "one GET".
+  Verification: verified — 142 offline tests (incl. the unreadable offer kept with its
+  `state`, external removal → Bring back, conflict → fetch → push, crash between PUT and
+  commit → 409 → fetch clean, stale version, push-all with one conflict, tripwire note);
+  mutator `services/flows.py` + `app/api` all killed; **live: `pytest -m live` 2/2** — the
+  new round trip (saga create → open → external change → fetch → edit → push → re-read)
+  passed, and the tripwire did not fire (Keitaro stored exactly what was sent).
 
 ---
 

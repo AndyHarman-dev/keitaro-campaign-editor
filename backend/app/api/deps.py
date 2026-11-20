@@ -9,8 +9,9 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db.session import SessionLocal
 from app.keitaro.client import KeitaroClient
+from app.keitaro.schemas import KtOffer
 
-__all__ = ["get_keitaro", "get_session", "get_settings", "offers_cache"]
+__all__ = ["cached_offers", "get_keitaro", "get_session", "get_settings", "offers_cache"]
 
 
 async def get_keitaro() -> AsyncIterator[KeitaroClient]:
@@ -49,3 +50,12 @@ class TtlCache:
 
 
 offers_cache = TtlCache(60)
+
+
+async def cached_offers(kt: KeitaroClient) -> list[KtOffer]:
+    """The offers this key can read, cached for a minute (search, Show all offers, names)."""
+    offers = offers_cache.get()
+    if offers is None:
+        offers = await kt.list_offers()
+        offers_cache.put(offers)
+    return offers

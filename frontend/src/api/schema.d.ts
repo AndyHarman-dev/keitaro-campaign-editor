@@ -56,6 +56,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/campaigns/{campaign_id}/editor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open Editor */
+        get: operations["open_editor_api_campaigns__campaign_id__editor_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/fetch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch */
+        post: operations["fetch_api_campaigns__campaign_id__fetch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/flows/{stream_id}/ops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Op */
+        post: operations["apply_op_api_flows__stream_id__ops_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/flows/{stream_id}/forget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Forget */
+        post: operations["forget_api_flows__stream_id__forget_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/flows/{stream_id}/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push */
+        post: operations["push_api_flows__stream_id__push_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/flows/{stream_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_flows__stream_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Push All */
+        post: operations["push_all_api_campaigns__campaign_id__push_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/campaigns/{campaign_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel All */
+        post: operations["cancel_all_api_campaigns__campaign_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -97,6 +233,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddIn */
+        AddIn: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "add";
+            /** Offer Id */
+            offer_id: number;
+        };
+        /** BringBackIn */
+        BringBackIn: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "bring_back";
+            /** Offer Id */
+            offer_id: number;
+        };
         /** CampaignOut */
         CampaignOut: {
             /** Id */
@@ -107,6 +263,13 @@ export interface components {
             alias: string;
             /** State */
             state: string;
+        };
+        /** CampaignRef */
+        CampaignRef: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
         };
         /** CreateCampaignIn */
         CreateCampaignIn: {
@@ -142,6 +305,48 @@ export interface components {
             /** Source Id */
             source_id: number | null;
         };
+        /** EditorView */
+        EditorView: {
+            campaign: components["schemas"]["CampaignRef"];
+            /** Kt Url */
+            kt_url: string;
+            /** Fetched At */
+            fetched_at: string | null;
+            /** Flows */
+            flows: components["schemas"]["FlowView"][];
+            /** Notes */
+            notes: string[];
+        };
+        /** FlowView */
+        FlowView: {
+            /** Stream Id */
+            stream_id: number;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+            /** Position */
+            position: number;
+            /** Summary */
+            summary: string;
+            /** Has Offers */
+            has_offers: boolean;
+            /** Version */
+            version: number;
+            /** Dirty */
+            dirty: boolean;
+            /** Pending Count */
+            pending_count: number;
+            /** Rows */
+            rows: components["schemas"]["RowView"][];
+        };
+        /** ForgetIn */
+        ForgetIn: {
+            /** Version */
+            version: number;
+            /** Offer Id */
+            offer_id: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -173,6 +378,75 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** OpRequest */
+        OpRequest: {
+            /** Version */
+            version: number;
+            /** Op */
+            op: components["schemas"]["RemoveIn"] | components["schemas"]["BringBackIn"] | components["schemas"]["AddIn"] | components["schemas"]["SetShareIn"] | components["schemas"]["TogglePinIn"];
+        };
+        /** RemoveIn */
+        RemoveIn: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "remove";
+            /** Offer Id */
+            offer_id: number;
+        };
+        /** RowView */
+        RowView: {
+            /** Offer Id */
+            offer_id: number;
+            /**
+             * Name
+             * @description null when this API key cannot read the offer
+             */
+            name: string | null;
+            /** Share */
+            share: number;
+            /** Pinned */
+            pinned: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "removed";
+            /** Removed By */
+            removed_by: ("local" | "keitaro") | null;
+            /** Archived */
+            archived: boolean;
+            /**
+             * Change
+             * @description pending change against the last fetch/push
+             */
+            change: ("added" | "removed" | "restored" | "share") | null;
+            /** Base Share */
+            base_share: number | null;
+        };
+        /** SetShareIn */
+        SetShareIn: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "set_share";
+            /** Offer Id */
+            offer_id: number;
+            /** Share */
+            share: number;
+        };
+        /** TogglePinIn */
+        TogglePinIn: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "toggle_pin";
+            /** Offer Id */
+            offer_id: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -185,6 +459,21 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VersionIn */
+        VersionIn: {
+            /** Version */
+            version: number;
+        };
+        /** VersionsIn */
+        VersionsIn: {
+            /**
+             * Versions
+             * @description stream_id -> version the client saw
+             */
+            versions: {
+                [key: string]: number;
+            };
         };
     };
     responses: never;
@@ -297,6 +586,278 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OfferOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_editor_api_campaigns__campaign_id__editor_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fetch_api_campaigns__campaign_id__fetch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_op_api_flows__stream_id__ops_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stream_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    forget_api_flows__stream_id__forget_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stream_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_api_flows__stream_id__push_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stream_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_flows__stream_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stream_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_all_api_campaigns__campaign_id__push_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_all_api_campaigns__campaign_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditorView"];
                 };
             };
             /** @description Validation Error */

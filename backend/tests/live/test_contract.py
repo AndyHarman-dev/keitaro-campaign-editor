@@ -66,3 +66,59 @@ async def test_fake_matches_the_real_tracker(kt):
     with pytest.raises(KeitaroError) as err:
         await kt.get_campaign(campaign.id)
     assert err.value.status == 404
+
+
+async def test_editor_round_trip_through_the_api(kt, tmp_path):
+    """create (saga) → open → external change → fetch → edit → push → re-read, live."""
+    import uuid
+
+    from fastapi.testclient import TestClient
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from app.api import deps
+    from app.db.session import Base
+    from app.main import app
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'live.db'}")
+    Base.metadata.create_all(engine)
+    sessions = sessionmaker(bind=engine, expire_on_commit=False)
+
+    def session():
+        with sessions() as s:
+            yield s
+
+    app.dependency_overrides = {deps.get_session: session}
+    deps.offers_cache.clear()
+    api = TestClient(app)
+    offer_id = (await kt.list_offers())[0].id
+    created = api.post("/api/campaigns", json={
+        "name": f"kce-contract-{uuid.uuid4().hex[:6]}", "geos": ["AU"], "offer_id": offer_id,
+        "idempotency_key": str(uuid.uuid4())})
+    assert created.status_code == 201, created.text
+    cid = created.json()["campaign_id"]
+    try:
+        view = api.get(f"/api/campaigns/{cid}/editor").json()
+        flow = next(f for f in view["flows"] if f["has_offers"])
+        assert [(r["offer_id"], r["share"]) for r in flow["rows"]] == [(offer_id, 100)]
+
+        await kt.put_stream_offers(flow["stream_id"], [OfferLink(offer_id, 60, "active")])
+        view = api.post(f"/api/campaigns/{cid}/fetch").json()
+        flow = next(f for f in view["flows"] if f["has_offers"])
+        assert flow["rows"][0]["share"] == 60
+
+        view = api.post(f"/api/flows/{flow['stream_id']}/ops", json={
+            "version": flow["version"],
+            "op": {"kind": "set_share", "offer_id": offer_id, "share": 40}}).json()
+        flow = next(f for f in view["flows"] if f["has_offers"])
+        assert (flow["rows"][0]["share"], flow["dirty"]) == (100, True)
+
+        pushed = api.post(f"/api/flows/{flow['stream_id']}/push",
+                          json={"version": flow["version"]})
+        assert pushed.status_code == 200, pushed.text
+        assert pushed.json()["notes"] == []  # Phase 6 tripwire: Keitaro kept what we sent
+        assert (await kt.get_stream(flow["stream_id"])).links == [
+            OfferLink(offer_id, 100, "active")]
+    finally:
+        app.dependency_overrides = {}
+        await kt.archive_campaign(cid)

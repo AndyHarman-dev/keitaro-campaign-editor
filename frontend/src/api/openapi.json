@@ -147,6 +147,378 @@
     }
    }
   },
+  "/api/campaigns/{campaign_id}/editor": {
+   "get": {
+    "summary": "Open Editor",
+    "operationId": "open_editor_api_campaigns__campaign_id__editor_get",
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/campaigns/{campaign_id}/fetch": {
+   "post": {
+    "summary": "Fetch",
+    "operationId": "fetch_api_campaigns__campaign_id__fetch_post",
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/flows/{stream_id}/ops": {
+   "post": {
+    "summary": "Apply Op",
+    "operationId": "apply_op_api_flows__stream_id__ops_post",
+    "parameters": [
+     {
+      "name": "stream_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Stream Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OpRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/flows/{stream_id}/forget": {
+   "post": {
+    "summary": "Forget",
+    "operationId": "forget_api_flows__stream_id__forget_post",
+    "parameters": [
+     {
+      "name": "stream_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Stream Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ForgetIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/flows/{stream_id}/push": {
+   "post": {
+    "summary": "Push",
+    "operationId": "push_api_flows__stream_id__push_post",
+    "parameters": [
+     {
+      "name": "stream_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Stream Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VersionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/flows/{stream_id}/cancel": {
+   "post": {
+    "summary": "Cancel",
+    "operationId": "cancel_api_flows__stream_id__cancel_post",
+    "parameters": [
+     {
+      "name": "stream_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Stream Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VersionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/campaigns/{campaign_id}/push": {
+   "post": {
+    "summary": "Push All",
+    "operationId": "push_all_api_campaigns__campaign_id__push_post",
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VersionsIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/campaigns/{campaign_id}/cancel": {
+   "post": {
+    "summary": "Cancel All",
+    "operationId": "cancel_all_api_campaigns__campaign_id__cancel_post",
+    "parameters": [
+     {
+      "name": "campaign_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Campaign Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VersionsIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EditorView"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/health": {
    "get": {
     "summary": "Health",
@@ -191,6 +563,44 @@
  },
  "components": {
   "schemas": {
+   "AddIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "const": "add",
+      "title": "Kind"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "offer_id"
+    ],
+    "title": "AddIn"
+   },
+   "BringBackIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "const": "bring_back",
+      "title": "Kind"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "offer_id"
+    ],
+    "title": "BringBackIn"
+   },
    "CampaignOut": {
     "properties": {
      "id": {
@@ -218,6 +628,24 @@
      "state"
     ],
     "title": "CampaignOut"
+   },
+   "CampaignRef": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "CampaignRef"
    },
    "CreateCampaignIn": {
     "properties": {
@@ -345,6 +773,131 @@
     ],
     "title": "Defaults"
    },
+   "EditorView": {
+    "properties": {
+     "campaign": {
+      "$ref": "#/components/schemas/CampaignRef"
+     },
+     "kt_url": {
+      "type": "string",
+      "title": "Kt Url"
+     },
+     "fetched_at": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fetched At"
+     },
+     "flows": {
+      "items": {
+       "$ref": "#/components/schemas/FlowView"
+      },
+      "type": "array",
+      "title": "Flows"
+     },
+     "notes": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Notes"
+     }
+    },
+    "type": "object",
+    "required": [
+     "campaign",
+     "kt_url",
+     "fetched_at",
+     "flows",
+     "notes"
+    ],
+    "title": "EditorView"
+   },
+   "FlowView": {
+    "properties": {
+     "stream_id": {
+      "type": "integer",
+      "title": "Stream Id"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     },
+     "type": {
+      "type": "string",
+      "title": "Type"
+     },
+     "position": {
+      "type": "integer",
+      "title": "Position"
+     },
+     "summary": {
+      "type": "string",
+      "title": "Summary"
+     },
+     "has_offers": {
+      "type": "boolean",
+      "title": "Has Offers"
+     },
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "dirty": {
+      "type": "boolean",
+      "title": "Dirty"
+     },
+     "pending_count": {
+      "type": "integer",
+      "title": "Pending Count"
+     },
+     "rows": {
+      "items": {
+       "$ref": "#/components/schemas/RowView"
+      },
+      "type": "array",
+      "title": "Rows"
+     }
+    },
+    "type": "object",
+    "required": [
+     "stream_id",
+     "name",
+     "type",
+     "position",
+     "summary",
+     "has_offers",
+     "version",
+     "dirty",
+     "pending_count",
+     "rows"
+    ],
+    "title": "FlowView"
+   },
+   "ForgetIn": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version",
+     "offer_id"
+    ],
+    "title": "ForgetIn"
+   },
    "HTTPValidationError": {
     "properties": {
      "detail": {
@@ -438,6 +991,211 @@
     ],
     "title": "OfferOut"
    },
+   "OpRequest": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     },
+     "op": {
+      "oneOf": [
+       {
+        "$ref": "#/components/schemas/RemoveIn"
+       },
+       {
+        "$ref": "#/components/schemas/BringBackIn"
+       },
+       {
+        "$ref": "#/components/schemas/AddIn"
+       },
+       {
+        "$ref": "#/components/schemas/SetShareIn"
+       },
+       {
+        "$ref": "#/components/schemas/TogglePinIn"
+       }
+      ],
+      "title": "Op",
+      "discriminator": {
+       "propertyName": "kind",
+       "mapping": {
+        "add": "#/components/schemas/AddIn",
+        "bring_back": "#/components/schemas/BringBackIn",
+        "remove": "#/components/schemas/RemoveIn",
+        "set_share": "#/components/schemas/SetShareIn",
+        "toggle_pin": "#/components/schemas/TogglePinIn"
+       }
+      }
+     }
+    },
+    "type": "object",
+    "required": [
+     "version",
+     "op"
+    ],
+    "title": "OpRequest"
+   },
+   "RemoveIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "const": "remove",
+      "title": "Kind"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "offer_id"
+    ],
+    "title": "RemoveIn"
+   },
+   "RowView": {
+    "properties": {
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name",
+      "description": "null when this API key cannot read the offer"
+     },
+     "share": {
+      "type": "integer",
+      "title": "Share"
+     },
+     "pinned": {
+      "type": "boolean",
+      "title": "Pinned"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "active",
+       "removed"
+      ],
+      "title": "Status"
+     },
+     "removed_by": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "local",
+         "keitaro"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Removed By"
+     },
+     "archived": {
+      "type": "boolean",
+      "title": "Archived"
+     },
+     "change": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "added",
+         "removed",
+         "restored",
+         "share"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Change",
+      "description": "pending change against the last fetch/push"
+     },
+     "base_share": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Base Share"
+     }
+    },
+    "type": "object",
+    "required": [
+     "offer_id",
+     "name",
+     "share",
+     "pinned",
+     "status",
+     "removed_by",
+     "archived",
+     "change",
+     "base_share"
+    ],
+    "title": "RowView"
+   },
+   "SetShareIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "const": "set_share",
+      "title": "Kind"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     },
+     "share": {
+      "type": "integer",
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Share"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "offer_id",
+     "share"
+    ],
+    "title": "SetShareIn"
+   },
+   "TogglePinIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "const": "toggle_pin",
+      "title": "Kind"
+     },
+     "offer_id": {
+      "type": "integer",
+      "title": "Offer Id"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "offer_id"
+    ],
+    "title": "TogglePinIn"
+   },
    "ValidationError": {
     "properties": {
      "loc": {
@@ -477,6 +1235,36 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "VersionIn": {
+    "properties": {
+     "version": {
+      "type": "integer",
+      "title": "Version"
+     }
+    },
+    "type": "object",
+    "required": [
+     "version"
+    ],
+    "title": "VersionIn"
+   },
+   "VersionsIn": {
+    "properties": {
+     "versions": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Versions",
+      "description": "stream_id -> version the client saw"
+     }
+    },
+    "type": "object",
+    "required": [
+     "versions"
+    ],
+    "title": "VersionsIn"
    }
   }
  }

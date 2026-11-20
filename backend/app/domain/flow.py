@@ -257,11 +257,15 @@ def rebalance(state: FlowState) -> Result:
 # --- forget, diff, push ------------------------------------------------------------------
 
 
+class NotArchived(ValueError):
+    pass
+
+
 def forget(state: FlowState, offer_id: int) -> FlowState:
     """Drops an archived row for good (a local base edit, nothing is sent to Keitaro)."""
     row = state.find(offer_id)
     if row is None or not row.archived:
-        raise ValueError(f"offer [{offer_id}] is not an archived row")
+        raise NotArchived(f"offer [{offer_id}] is not an archived row")
     return replace(state, rows=tuple(r for r in state.rows if r.offer_id != offer_id))
 
 
