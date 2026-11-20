@@ -149,6 +149,11 @@ scripts/check.sh --fast                # the same without mutation testing
 
 `scripts/check.sh` needs the `crapper`, `dryer` and `mutator` tools on `PATH`.
 
+**CI** (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`:
+`scripts/check.sh --fast`, `alembic check` and the Playwright suite on the fake tracker. A
+nightly run adds mutation testing (the full `scripts/check.sh`). It uses no secrets and never
+talks to a real Keitaro. The tools are cloned from their public repos at pinned commits.
+
 **Opt-in live contract checks** prove the fake still matches the real tracker:
 
 ```bash
