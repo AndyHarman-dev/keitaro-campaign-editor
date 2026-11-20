@@ -24,10 +24,12 @@ env:
   CRAPPER_SHA: c757ec79a6c15dc815238bbd9c2f4601eb54d3cc
   DRYER_SHA: 66ff6d21a42c04afcad89c78a80066176d1294b0
   MUTATOR_SHA: 830ec7e9c39664d753f8699015bc796df67727b9
+  # Full run (with mutation testing) nightly and when started by hand; --fast otherwise.
+  FULL: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
 
 jobs:
   checks:
-    name: Lint, types, tests, CRAP, duplication${{ github.event_name == 'schedule' && ', mutation' || '' }}
+    name: Lint, types, tests, CRAP, duplication${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && ', mutation' || '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -63,8 +65,8 @@ jobs:
         env:
           DATABASE_URL: sqlite:///${{ runner.temp }}/ci.db
         run: uv run alembic upgrade head && uv run alembic check
-      - name: scripts/check.sh${{ github.event_name != 'schedule' && ' --fast' || '' }}
-        run: scripts/check.sh ${{ github.event_name != 'schedule' && '--fast' || '' }}
+      - name: scripts/check.sh
+        run: if [ "$FULL" = true ]; then scripts/check.sh; else scripts/check.sh --fast; fi
 
   e2e:
     name: End-to-end (Playwright, fake tracker)
