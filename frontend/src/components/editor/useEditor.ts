@@ -13,6 +13,10 @@ function problemOf(error: unknown): FlowProblem | null {
   return (error.body as { detail: FlowProblem }).detail
 }
 
+/** Fetch stays visibly busy at least this long, so a fast reply still reads as "it fetched". */
+export const MIN_BUSY_MS = 400
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
 const versionsOf = (view: View) => Object.fromEntries(view.flows.map((f) => [f.stream_id, f.version]))
 
 /** Editor state: the backend's view, notes to show, and per-flow conflict/stale problems.
@@ -25,6 +29,7 @@ export function useEditor(campaignId: number) {
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<string[]>([])
   const [problems, setProblems] = useState<Record<number, FlowProblem>>({})
+  const [fetching, setFetching] = useState(false)
   const queue = useRef(new SerialQueue<View>()).current
 
   const run = useCallback(async (request: Reply, streamId?: number, clearsProblems = false) => {
@@ -62,10 +67,14 @@ export function useEditor(campaignId: number) {
     enqueue((v) => v && api.POST(url, { ...path, body: { versions: versionsOf(v) } }))
 
   return {
-    view, error, notes, problems,
+    view, error, notes, problems, fetching,
     dismissNotes: () => setNotes([]),
     reload,
-    fetch: () => enqueue(() => api.POST('/api/campaigns/{campaign_id}/fetch', path), undefined, true),
+    fetch: async () => {
+      setFetching(true)
+      await Promise.all([enqueue(() => api.POST('/api/campaigns/{campaign_id}/fetch', path), undefined, true), pause(MIN_BUSY_MS)])
+      setFetching(false)
+    },
     op: (flow: Flow, op: OpIn) =>
       onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/ops', { ...flowPath(f), body: { version: f.version, op } })),
     forget: (flow: Flow, offerId: number) =>

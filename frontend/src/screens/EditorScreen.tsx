@@ -20,7 +20,9 @@ function TopActions({ editor, allOpen, onToggleAll }: { editor: Editor; allOpen:
           <button type="button" className="primary" onClick={editor.pushAll}>Push all to KT ({dirty})</button>
         </>
       ) : (
-        <button type="button" className="primary" onClick={editor.fetch}>Fetch from KT</button>
+        <button type="button" className="primary" disabled={editor.fetching} aria-busy={editor.fetching} onClick={editor.fetch}>
+          {editor.fetching ? <><span className="spinner" aria-hidden="true" />Fetching…</> : 'Fetch from KT'}
+        </button>
       )}
     </div>
   )

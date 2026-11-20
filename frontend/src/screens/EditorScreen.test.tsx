@@ -195,6 +195,19 @@ describe('fetch, push and cancel', () => {
     expect(api.of('POST /api/campaigns/216250/fetch')).toHaveLength(1)
   })
 
+  it('shows Fetch as busy for a visible moment, even when Keitaro answers at once', async () => {
+    routes({ 'POST /api/campaigns/216250/fetch': { body: view(undefined, { notes: ['Fetched.'] }) } })
+    const user = userEvent.setup()
+    renderEditor()
+    await user.click(await screen.findByRole('button', { name: 'Fetch from KT' }))
+    const busy = screen.getByRole('button', { name: 'Fetching…' })
+    expect(busy).toBeDisabled()
+    expect(busy).toHaveAttribute('aria-busy', 'true')
+    expect(await screen.findByText('Fetched.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fetching…' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Fetch from KT' })).toBeEnabled()
+  })
+
   it('pushes and cancels one flow', async () => {
     const api = routes({
       'GET /api/campaigns/216250/editor': { body: dirtyView() },

@@ -137,3 +137,6 @@ details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
 .all-offers li { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 4px; border-top: 1px solid var(--border-soft); }
 .all-offers .name { flex: 1; min-width: 160px; }
 
+.spinner { display: inline-block; width: 12px; height: 12px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
