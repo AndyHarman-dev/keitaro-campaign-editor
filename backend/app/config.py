@@ -21,10 +21,6 @@ class Settings(BaseSettings):
     keitaro_default_source: str = Field(default="", description="Traffic source name")
     database_url: str = f"sqlite:///{REPO_ROOT / 'data' / 'app.db'}"
 
-    @property
-    def keitaro_api_root(self) -> str:
-        return self.keitaro_base_url.rstrip("/") + "/admin_api/v1"
-
 
 @lru_cache
 def get_settings() -> Settings:

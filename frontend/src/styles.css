@@ -1,0 +1,27 @@
+:root {
+  --bg: #f6f6f3;
+  --surface: #ffffff;
+  --border: #e3e3de;
+  --border-soft: #efefea;
+  --text: #1d2125;
+  --muted: #5d646b;
+  --accent: #2c5f7c;
+  --accent-dark: #1e4559;
+  --accent-soft: #e8f0f4;
+  --warn-bg: #fbe7bf;
+  --warn-text: #6b4300;
+  --dirty-bg: #fffdf7;
+  --dirty-edge: #e0a93a;
+  --danger-bg: #fcf1ef;
+  --danger-border: #e6b8b0;
+  --danger-text: #7a2a1e;
+  --removed-bg: #f7f7f4;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+body { margin: 0; background: var(--bg); }
+a { color: var(--accent); }
+a:hover { color: var(--accent-dark); }

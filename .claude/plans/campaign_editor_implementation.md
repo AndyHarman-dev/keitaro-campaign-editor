@@ -663,6 +663,20 @@ fast and locally.
   `alembic upgrade head` on an empty DB), `uv run alembic upgrade head` applied to
   `data/app.db`; mutator `app/db` 8/8 killed, 4 "uncovered" sites are the multi-line
   `update(...)` call (coverage artefact).
+- **2026-11-20 — Phase 5.** Context: read side, create saga, HTTP API, frontend scaffold.
+  Actions: `app/api/` (`deps.py` with overridable dependencies + 60 s `TtlCache` for offers,
+  `schemas.py`, `campaigns.py` router, `errors.py` mapping Keitaro failures to 502 with
+  `{message, keitaro_status, archived_campaign}`), `app/services/campaigns.py` (lookups with
+  `.env` defaults resolved by name, create saga with idempotency key and compensation);
+  `tests/conftest.py` wires the API to `FakeKeitaro` + temp SQLite; `frontend/` (Vite 6, React
+  19, TS, Vitest, openapi-typescript + openapi-fetch, `src/api/client.ts`). Decisions: the
+  plan's "in flow" marker on `/api/offers` dropped: the editor already holds the rows, so the
+  frontend marks them (one decision in one place). TDD caught a real bug: when the archive in
+  the compensation step also failed, its error replaced the original one; now the original
+  error is reported with `archived_campaign: false`. Dead `Settings.keitaro_api_root` removed
+  (mutation baseline). Verification: verified — 115 backend tests, 7 frontend tests,
+  `npm run gen:api && npm run build` ok, `scripts/check.sh --fast` green; mutator `app/api`,
+  `app/services`, `frontend/src` all killed.
 
 ---
 

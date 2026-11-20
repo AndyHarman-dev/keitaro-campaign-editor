@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 
+from app.api import campaigns, errors
 from app.config import get_settings
 from app.keitaro.client import KeitaroClient, KeitaroError
 
 app = FastAPI(title="Keitaro Campaign Editor")
+app.include_router(campaigns.router)
+errors.install(app)
 
 
 @app.get("/api/health")
