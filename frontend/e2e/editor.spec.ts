@@ -105,3 +105,19 @@ test('screenshots for visual review', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.screenshot({ path: 'test-results/screens/editor-phone.png', fullPage: true })
 })
+
+test('every offer in the add list can be picked, none is clipped by the flow card', async ({ page }) => {
+  await openNewCampaign(page, 3749)
+  await flow(page).getByLabel('Add offer to Flow 2').click()
+  const options = flow(page).getByRole('option')
+  await expect(options.nth(2)).toBeVisible() // at least 3 options: the list reaches past the card
+  const last = options.last()
+  const lastId = Number((await last.locator('.mono').textContent())!.trim())
+  await page.screenshot({ path: 'test-results/screens/add-offer-open.png', fullPage: true })
+  // Click where the option is drawn, as a user would. Locator.click() would first scroll the
+  // card's clipped content into view and so hide the bug.
+  const box = (await last.boundingBox())!
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await flow(page).getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(share(page, lastId)).toHaveText('50%')
+})

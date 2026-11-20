@@ -96,8 +96,9 @@ details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
 .small { font-size: 12px; }
 .toast { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-dark); font-size: 13px; }
 .toast button { border: 0; background: none; color: inherit; font-size: 18px; }
-.flow { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-.flow-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+/* No overflow clipping here: the add-offer list drops out of the card (it is the last child). */
+.flow { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.flow-head { border-radius: 9px 9px 0 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
 .flow.dirty .flow-head { background: var(--dirty-bg); box-shadow: inset 3px 0 0 var(--dirty-edge); }
 .flow-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .flow-title h2 { font-size: 15px; }
@@ -135,3 +136,4 @@ details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
 .all-offers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 320px; overflow: auto; }
 .all-offers li { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 8px 4px; border-top: 1px solid var(--border-soft); }
 .all-offers .name { flex: 1; min-width: 160px; }
+
