@@ -613,6 +613,24 @@ fast and locally.
 
 <!-- Format: YYYY-MM-DD: context, actions, decisions (friction and deviations), verification result. -->
 
+- **2026-11-20 — Phase 0.** Context: tooling before any feature work. Actions: branch
+  `feat/campaign-editor` from `chore/scaffold`; `pytest-cov` + `hypothesis`; `scripts/check.sh`
+  (`--fast` skips mutation); `docs/glossary.md`; tooling output ignored. Decisions: the
+  baseline crapper run flagged `keitaro_ping` (CRAP 15.7, untested), so its current output was
+  pinned with three tests (this doubles as the parity oracle the plan mentions). Verification:
+  verified — check.sh green; mutator 7/8, the survivor sits in `KeitaroClient.get`, which
+  Phase 3 rewrites.
+- **2026-11-20 — Phase 1.** Context: pure allocation + staged ops. Actions:
+  `app/domain/flow.py` (rows, pins, ops, `apply`/`replay`/`rebalance`/`diff`/`forget`/
+  `push_plan`), 42 table tests from the vision's numbers. Decisions: ops are **total** (a
+  no-op with a note instead of raising), so Phase 2's replay needs nothing extra; the plan's
+  "refused" for Bring back on an archived row is that no-op + note. `Add` of a removed offer
+  behaves as Bring back. A pin-only change counts as dirty (Push then writes identical offers
+  and stores the pin in the base). One hand-computed expectation in the diff test was wrong
+  (row 2 keeps 33 %), fixed before implementing. Verification: verified — crapper max 7,
+  dryer clean, mutator `--mutate-all` 44/46; the 2 survivors (lines 151, 160: placeholder
+  share of a re-added unpinned row, always overwritten by rebalance) are equivalent mutants.
+
 ---
 
 ## 6. Decisions Log
