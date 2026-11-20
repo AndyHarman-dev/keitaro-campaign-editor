@@ -1,4 +1,4 @@
-"""Only this machine's own UI may drive the API.
+"""Only pages served from this machine may drive the API; remote web pages may not.
 
 The backend holds a tracker key with write access and listens on localhost, so any web page open
 in the same browser can try to reach it. Two checks stop that:
@@ -8,6 +8,9 @@ in the same browser can try to reach it. Two checks stop that:
 - Origin: a cross-site form or fetch carries a valid Host but the attacker's Origin, so writes
   (anything but GET/HEAD/OPTIONS) from another origin are refused (403). Requests without an
   Origin header, such as curl, are allowed.
+
+Ports are not compared: the UI runs on several (8000, Vite's 5173, the e2e ports), and a page on
+another local port is software already on this machine, which could call the API directly anyway.
 """
 
 from urllib.parse import urlsplit
