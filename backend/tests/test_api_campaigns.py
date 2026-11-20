@@ -11,6 +11,9 @@ def test_campaigns_are_listed_newest_first_and_searchable(api, fake):
         fake.campaigns[len(fake.campaigns) + 1] = {"id": len(fake.campaigns) + 1, "name": name,
                                                    "alias": name.lower(), "state": "active"}
     assert [c["name"] for c in api.get("/api/campaigns").json()] == ["Gamma", "Beta", "Alpha"]
+    fake.campaigns[1] |= {"group": "Team", "domain": "https://track.example/"}
+    alpha = api.get("/api/campaigns?q=alpha").json()[0]
+    assert (alpha["group"], alpha["domain"]) == ("Team", "track.example")
     assert [c["name"] for c in api.get("/api/campaigns?q=bet").json()] == ["Beta"]
     assert [c["name"] for c in api.get("/api/campaigns?q=1").json()] == ["Alpha"]
 

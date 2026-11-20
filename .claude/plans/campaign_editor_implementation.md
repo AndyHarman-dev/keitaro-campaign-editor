@@ -696,6 +696,22 @@ fast and locally.
   mutator `services/flows.py` + `app/api` all killed; **live: `pytest -m live` 2/2** — the
   new round trip (saga create → open → external change → fetch → edit → push → re-read)
   passed, and the tripwire did not fire (Keitaro stored exactly what was sent).
+- **2026-11-20 — Phase 7.** Context: Campaigns screen. Actions: `CampaignsScreen` (top bar
+  with Keitaro connection badge from `/api/keitaro/ping`), `CampaignList` (debounced server
+  search, refresh, Keitaro failure shown), `NewCampaignForm` split into `GeoInput` (chips,
+  inline ISO-2 check), `OfferPicker` (autocomplete, reused by the editor's Add), `AdvancedChoices`
+  (defaults resolved by the backend, `.env` problems listed), `createCampaign.ts` (submit hook,
+  error description, override resolution); `src/test/mockApi.ts`; app styles from the design
+  tokens. Backend: campaign list now carries `group` and `domain` (host) from Keitaro's list;
+  routers declare their 502/409 bodies so the generated TS types include them. Decisions: the
+  design's "Offers" count column dropped (it would cost one Keitaro call per campaign); the
+  idempotency key is generated once per form and reused on retry (a failed create records
+  nothing). API base URL is the page origin (identical in the browser, required under
+  jsdom). crapper first flagged `NewCampaignForm` (CC 23); split into the pieces above.
+  Verification: verified — 24 frontend tests (list, search, empty, Keitaro failure,
+  refresh, GEO chips and validation, preview, disabled-until-ready, create with defaults
+  and key → navigates, Advanced override, busy state, Keitaro error with/without archive,
+  400 message, network failure); crapper max 10.0, dryer clean, mutator 95/95.
 
 ---
 

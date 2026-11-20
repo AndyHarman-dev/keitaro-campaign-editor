@@ -19,6 +19,8 @@ class CampaignOut(BaseModel):
     name: str
     alias: str
     state: str
+    group: str | None
+    domain: str | None = Field(description="host only, e.g. track.example")
 
 
 class Defaults(BaseModel):
@@ -74,6 +76,10 @@ class KeitaroFailure(BaseModel):
     message: str
     keitaro_status: int
     archived_campaign: bool = False
+
+
+class KeitaroFailureBody(BaseModel):
+    detail: KeitaroFailure
 
 
 # --- editor ------------------------------------------------------------------------------
@@ -168,3 +174,7 @@ class VersionsIn(BaseModel):
 class FlowProblem(BaseModel):
     kind: Literal["conflict", "stale"]
     message: str
+
+
+class FlowProblemBody(BaseModel):
+    detail: FlowProblem

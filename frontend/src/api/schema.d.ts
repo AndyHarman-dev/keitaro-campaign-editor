@@ -263,6 +263,13 @@ export interface components {
             alias: string;
             /** State */
             state: string;
+            /** Group */
+            group: string | null;
+            /**
+             * Domain
+             * @description host only, e.g. track.example
+             */
+            domain: string | null;
         };
         /** CampaignRef */
         CampaignRef: {
@@ -317,6 +324,20 @@ export interface components {
             /** Notes */
             notes: string[];
         };
+        /** FlowProblem */
+        FlowProblem: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "conflict" | "stale";
+            /** Message */
+            message: string;
+        };
+        /** FlowProblemBody */
+        FlowProblemBody: {
+            detail: components["schemas"]["FlowProblem"];
+        };
         /** FlowView */
         FlowView: {
             /** Stream Id */
@@ -351,6 +372,22 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** KeitaroFailure */
+        KeitaroFailure: {
+            /** Message */
+            message: string;
+            /** Keitaro Status */
+            keitaro_status: number;
+            /**
+             * Archived Campaign
+             * @default false
+             */
+            archived_campaign: boolean;
+        };
+        /** KeitaroFailureBody */
+        KeitaroFailureBody: {
+            detail: components["schemas"]["KeitaroFailure"];
         };
         /** LookupsOut */
         LookupsOut: {
@@ -513,6 +550,15 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
+                };
+            };
         };
     };
     create_api_campaigns_post: {
@@ -546,6 +592,15 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
+                };
+            };
         };
     };
     lookups_api_lookups_get: {
@@ -564,6 +619,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LookupsOut"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -597,6 +661,15 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
+                };
+            };
         };
     };
     open_editor_api_campaigns__campaign_id__editor_get: {
@@ -619,6 +692,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -626,6 +708,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -650,6 +741,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -657,6 +757,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -685,6 +794,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -692,6 +810,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -720,6 +847,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -727,6 +863,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -755,6 +900,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -762,6 +916,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -790,6 +953,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -797,6 +969,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -825,6 +1006,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -832,6 +1022,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };
@@ -860,6 +1059,15 @@ export interface operations {
                     "application/json": components["schemas"]["EditorView"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FlowProblemBody"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -867,6 +1075,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeitaroFailureBody"];
                 };
             };
         };

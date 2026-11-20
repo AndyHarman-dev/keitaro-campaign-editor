@@ -1,3 +1,10 @@
+import { Route, Routes } from 'react-router-dom'
+import CampaignsScreen from './screens/CampaignsScreen'
+
 export default function App() {
-  return <main>Keitaro Campaign Editor</main>
+  return (
+    <Routes>
+      <Route path="/" element={<CampaignsScreen />} />
+    </Routes>
+  )
 }

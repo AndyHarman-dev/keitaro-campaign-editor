@@ -36,6 +36,16 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -72,6 +82,16 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -96,6 +116,16 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/LookupsOut"
+        }
+       }
+      }
+     },
+     "502": {
+      "description": "Bad Gateway",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
         }
        }
       }
@@ -133,6 +163,16 @@
         }
        }
       }
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
      },
      "422": {
       "description": "Validation Error",
@@ -173,6 +213,26 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -211,6 +271,26 @@
         }
        }
       }
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
      },
      "422": {
       "description": "Validation Error",
@@ -261,6 +341,26 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -309,6 +409,26 @@
         }
        }
       }
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
      },
      "422": {
       "description": "Validation Error",
@@ -359,6 +479,26 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -407,6 +547,26 @@
         }
        }
       }
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
      },
      "422": {
       "description": "Validation Error",
@@ -457,6 +617,26 @@
        }
       }
      },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
      "422": {
       "description": "Validation Error",
       "content": {
@@ -505,6 +685,26 @@
         }
        }
       }
+     },
+     "502": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KeitaroFailureBody"
+        }
+       }
+      },
+      "description": "Bad Gateway"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FlowProblemBody"
+        }
+       }
+      },
+      "description": "Conflict"
      },
      "422": {
       "description": "Validation Error",
@@ -618,6 +818,29 @@
      "state": {
       "type": "string",
       "title": "State"
+     },
+     "group": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Group"
+     },
+     "domain": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Domain",
+      "description": "host only, e.g. track.example"
      }
     },
     "type": "object",
@@ -625,7 +848,9 @@
      "id",
      "name",
      "alias",
-     "state"
+     "state",
+     "group",
+     "domain"
     ],
     "title": "CampaignOut"
    },
@@ -819,6 +1044,40 @@
     ],
     "title": "EditorView"
    },
+   "FlowProblem": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "conflict",
+       "stale"
+      ],
+      "title": "Kind"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind",
+     "message"
+    ],
+    "title": "FlowProblem"
+   },
+   "FlowProblemBody": {
+    "properties": {
+     "detail": {
+      "$ref": "#/components/schemas/FlowProblem"
+     }
+    },
+    "type": "object",
+    "required": [
+     "detail"
+    ],
+    "title": "FlowProblemBody"
+   },
    "FlowView": {
     "properties": {
      "stream_id": {
@@ -910,6 +1169,41 @@
     },
     "type": "object",
     "title": "HTTPValidationError"
+   },
+   "KeitaroFailure": {
+    "properties": {
+     "message": {
+      "type": "string",
+      "title": "Message"
+     },
+     "keitaro_status": {
+      "type": "integer",
+      "title": "Keitaro Status"
+     },
+     "archived_campaign": {
+      "type": "boolean",
+      "title": "Archived Campaign",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "message",
+     "keitaro_status"
+    ],
+    "title": "KeitaroFailure"
+   },
+   "KeitaroFailureBody": {
+    "properties": {
+     "detail": {
+      "$ref": "#/components/schemas/KeitaroFailure"
+     }
+    },
+    "type": "object",
+    "required": [
+     "detail"
+    ],
+    "title": "KeitaroFailureBody"
    },
    "LookupsOut": {
     "properties": {

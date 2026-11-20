@@ -24,6 +24,8 @@ class KtCampaign(_Kt):
     domain_id: int | None = None
     group_id: int | None = None
     traffic_source_id: int | None = None
+    group: str | None = None  # group name, as the campaign list returns it
+    domain: str | None = None  # campaign domain URL, e.g. "https://track.example/"
 
 
 class KtOffer(_Kt):

@@ -1,4 +1,5 @@
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from app.api.schemas import (
     CreateCampaignIn,
     CreateCampaignOut,
     Defaults,
+    KeitaroFailureBody,
     LookupsOut,
     Named,
     OfferOut,
@@ -17,7 +19,7 @@ from app.config import Settings
 from app.keitaro.client import KeitaroClient
 from app.services.campaigns import NewCampaign, create_campaign, load_lookups
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", responses={502: {"model": KeitaroFailureBody}})
 Keitaro = Annotated[KeitaroClient, Depends(get_keitaro)]
 Db = Annotated[Session, Depends(get_session)]
 Config = Annotated[Settings, Depends(get_settings)]
@@ -31,8 +33,12 @@ def _matches(q: str, *fields: object) -> bool:
 @router.get("/campaigns")
 async def list_campaigns(kt: Keitaro, q: str = "") -> list[CampaignOut]:
     campaigns = sorted(await kt.list_campaigns(), key=lambda c: c.id, reverse=True)
-    return [CampaignOut(id=c.id, name=c.name, alias=c.alias, state=c.state)
-            for c in campaigns if _matches(q, c.id, c.name)]
+    return [CampaignOut(id=c.id, name=c.name, alias=c.alias, state=c.state, group=c.group,
+                        domain=_host(c.domain)) for c in campaigns if _matches(q, c.id, c.name)]
+
+
+def _host(url: str | None) -> str | None:
+    return urlsplit(url).hostname if url else None
 
 
 @router.get("/lookups")

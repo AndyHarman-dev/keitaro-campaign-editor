@@ -2,7 +2,8 @@ import createClient from 'openapi-fetch'
 import type { components, paths } from './schema'
 
 /** Typed client generated from the backend's OpenAPI schema (`npm run gen:api`). */
-export const api = createClient<paths>({ baseUrl: '' })
+// fetch is looked up per call so tests can stub it.
+export const api = createClient<paths>({ baseUrl: globalThis.location?.origin ?? '', fetch: (request) => globalThis.fetch(request) })
 export type Schemas = components['schemas']
 
 export class ApiError extends Error {
