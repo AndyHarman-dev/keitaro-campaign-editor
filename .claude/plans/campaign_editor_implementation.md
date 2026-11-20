@@ -781,7 +781,7 @@ fast and locally.
   9. *Applied.* Ops made pointless by a Keitaro change repeated their note on every fetch.
      Domain `effective()` keeps only ops that still act.
   Also: a mutation run found Flow 1/2 positions unasserted, now pinned. Verification:
-  verified. 162 backend tests (11 new), 58 frontend tests (10 new), Playwright 7/7,
+  verified. 160 backend tests (9 new), 58 frontend tests (9 new), Playwright 7/7,
   `scripts/check.sh` full green (backend 149/149 killed and 7 multi-line coverage
   artefacts, frontend 171/171).
 
