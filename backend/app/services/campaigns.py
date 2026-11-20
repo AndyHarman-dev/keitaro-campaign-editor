@@ -15,10 +15,14 @@ REDIRECT_URL = "https://google.com"
 
 
 class CreateFailed(Exception):
-    def __init__(self, error: KeitaroError, archived_campaign: bool):
+    """`campaign_id` is set when the campaign exists in Keitaro (archived or not)."""
+
+    def __init__(self, error: KeitaroError, archived_campaign: bool = False,
+                 campaign_id: int | None = None):
         super().__init__(error.message)
         self.error = error
         self.archived_campaign = archived_campaign
+        self.campaign_id = campaign_id
 
 
 class MissingDefault(Exception):
@@ -109,13 +113,17 @@ async def create_campaign(kt: KeitaroClient, session: Session, settings: Setting
     try:
         campaign = await kt.create_campaign(name=new.name, alias=secrets.token_hex(6), **ids)
     except KeitaroError as exc:
-        raise CreateFailed(exc, archived_campaign=False) from exc
+        raise CreateFailed(exc) from exc
     try:
         await kt.create_redirect_stream(campaign.id, "Flow 1", 1, new.geos, REDIRECT_URL)
         await kt.create_offer_stream(campaign.id, "Flow 2", 2,
                                      [OfferLink(new.offer_id, 100, "active")])
     except KeitaroError as exc:
-        raise CreateFailed(exc, archived_campaign=await _archive(kt, campaign.id)) from exc
+        archived = await _archive(kt, campaign.id)
+        raise CreateFailed(exc, archived, campaign.id) from exc
+    except Exception:
+        await _archive(kt, campaign.id)
+        raise
     log.record(new.idempotency_key, campaign.id)
     session.commit()
     return campaign.id

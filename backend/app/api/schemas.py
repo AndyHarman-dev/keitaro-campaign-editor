@@ -76,6 +76,8 @@ class KeitaroFailure(BaseModel):
     message: str
     keitaro_status: int
     archived_campaign: bool = False
+    campaign_id: int | None = Field(
+        default=None, description="Set when the campaign was created before the failure")
 
 
 class KeitaroFailureBody(BaseModel):

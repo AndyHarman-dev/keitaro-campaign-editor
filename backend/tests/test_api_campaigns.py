@@ -56,6 +56,7 @@ def test_create_builds_the_campaign_and_both_flows(api, fake):
         "Spring promo", 1, 2, 3, "position", "CPC")
     assert len(campaign["alias"]) >= 8
     forced, offers = sorted(fake.flows_of(cid), key=lambda s: s["position"])
+    assert (forced["position"], offers["position"]) == (1, 2)
     assert (forced["name"], forced["type"], forced["schema"], forced["action_payload"]) == (
         "Flow 1", "forced", "redirect", "https://google.com")
     assert forced["filters"] == [{"name": "country", "mode": "accept", "payload": ["AU", "NZ"]}]
@@ -92,7 +93,8 @@ def test_failed_flow_archives_the_half_made_campaign(api, fake):
     resp = api.post("/api/campaigns", json=NEW)
     assert resp.status_code == 502
     assert resp.json()["detail"] == {
-        "message": "Invalid filter", "keitaro_status": 400, "archived_campaign": True}
+        "message": "Invalid filter", "keitaro_status": 400, "archived_campaign": True,
+        "campaign_id": 1000}
     (campaign,) = fake.campaigns.values()
     assert campaign["state"] == "deleted"
 
@@ -102,7 +104,8 @@ def test_failed_campaign_create_reports_that_nothing_was_created(api, fake):
     resp = api.post("/api/campaigns", json=NEW)
     assert resp.status_code == 502
     assert resp.json()["detail"] == {
-        "message": "Alias is already taken", "keitaro_status": 400, "archived_campaign": False}
+        "message": "Alias is already taken", "keitaro_status": 400, "archived_campaign": False,
+        "campaign_id": None}
     assert fake.campaigns == {}
 
 
@@ -119,7 +122,7 @@ def test_keitaro_errors_on_reads_surface_as_502(api, fake):
     resp = api.get("/api/campaigns")
     assert resp.status_code == 502
     assert resp.json()["detail"] == {"message": "Unauthorized", "keitaro_status": 401,
-                                     "archived_campaign": False}
+                                     "archived_campaign": False, "campaign_id": None}
 
 
 def test_failed_compensation_says_the_campaign_was_not_archived(api, fake):
@@ -128,7 +131,22 @@ def test_failed_compensation_says_the_campaign_was_not_archived(api, fake):
     resp = api.post("/api/campaigns", json=NEW)
     assert resp.status_code == 502
     assert resp.json()["detail"] == {
-        "message": "Invalid filter", "keitaro_status": 400, "archived_campaign": False}
+        "message": "Invalid filter", "keitaro_status": 400, "archived_campaign": False,
+        "campaign_id": 1000}
+    assert fake.campaigns[1000]["state"] == "active"
+
+
+def test_unexpected_error_after_create_still_archives_the_campaign(api, fake, monkeypatch):
+    def broken(request, match):
+        raise RuntimeError("unparseable flow")
+
+    monkeypatch.setattr(fake, "_create_stream", broken)
+    fake._routes = [(m, p, broken if h.__name__ == "_create_stream" else h)
+                    for m, p, h in fake._routes]
+    with pytest.raises(RuntimeError):
+        api.post("/api/campaigns", json=NEW)
+    (campaign,) = fake.campaigns.values()
+    assert campaign["state"] == "deleted"
 
 
 def test_geo_error_names_the_bad_codes(api):

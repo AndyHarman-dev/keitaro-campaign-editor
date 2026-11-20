@@ -12,9 +12,10 @@ from app.services.flows import Conflict, FlowNotFound, StaleVersion
 _STALE = "This flow changed in another tab or window. Reload to see the latest state."
 
 
-def _failure(error: KeitaroError, archived: bool = False) -> JSONResponse:
+def _failure(error: KeitaroError, archived: bool = False,
+             campaign_id: int | None = None) -> JSONResponse:
     body = KeitaroFailure(message=error.message, keitaro_status=error.status,
-                          archived_campaign=archived)
+                          archived_campaign=archived, campaign_id=campaign_id)
     return JSONResponse(status_code=502, content={"detail": body.model_dump()})
 
 
@@ -25,7 +26,7 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(CreateFailed)
     async def create_failed(request: Request, exc: CreateFailed) -> JSONResponse:
-        return _failure(exc.error, exc.archived_campaign)
+        return _failure(exc.error, exc.archived_campaign, exc.campaign_id)
 
     @app.exception_handler(Conflict)
     async def conflict(request: Request, exc: Conflict) -> JSONResponse:
