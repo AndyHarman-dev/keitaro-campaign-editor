@@ -56,9 +56,12 @@ def _serve_frontend(app: FastAPI, dist: Path) -> None:
         if path.startswith("api/"):
             raise HTTPException(status_code=404)
         target = (root / path).resolve()
-        if path and target.is_file() and target.is_relative_to(root):
-            return FileResponse(target)
-        return FileResponse(root / "index.html")
+        if not (path and target.is_file() and target.is_relative_to(root)):
+            target = root / "index.html"
+        if target.name == "index.html":
+            # Always revalidated, so a rebuild reaches open tabs; hashed assets stay cacheable.
+            return FileResponse(target, headers={"Cache-Control": "no-cache"})
+        return FileResponse(target)
 
 
 def create_app(settings: Settings, frontend_dist: Path = FRONTEND_DIST) -> FastAPI:

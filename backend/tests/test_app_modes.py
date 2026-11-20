@@ -68,6 +68,18 @@ def test_built_frontend_is_served_with_spa_fallback(tmp_path):
     assert api.get("/api/nope").status_code == 404
 
 
+def test_index_html_is_never_cached_so_a_rebuild_reaches_open_tabs(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>app</html>")
+    (dist / "assets" / "app-1a2b.js").write_text("console.log(1)")
+    api = TestClient(create_app(_settings(tmp_path), frontend_dist=dist))
+    assert api.get("/").headers["cache-control"] == "no-cache"
+    assert api.get("/campaigns/123").headers["cache-control"] == "no-cache"
+    assert api.get("/index.html").headers["cache-control"] == "no-cache"
+    assert "cache-control" not in api.get("/assets/app-1a2b.js").headers  # hashed: cacheable
+
+
 def test_no_frontend_build_means_api_only(tmp_path):
     api = TestClient(create_app(_settings(tmp_path), frontend_dist=tmp_path / "missing"))
     assert api.get("/").status_code == 404
