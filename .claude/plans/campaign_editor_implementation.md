@@ -630,6 +630,17 @@ fast and locally.
   (row 2 keeps 33 %), fixed before implementing. Verification: verified — crapper max 7,
   dryer clean, mutator `--mutate-all` 44/46; the 2 survivors (lines 151, 160: placeholder
   share of a re-added unpinned row, always overwritten by rebalance) are equivalent mutants.
+- **2026-11-20 — Phase 2.** Context: fetch merge with pending ops on top. Actions:
+  `merge_fetch`, `signature` in `app/domain/flow.py`; 19 tests (the plan's case table, order
+  rules, pins, and a hypothesis property: any op sequence keeps active shares at 100).
+  Decisions: every case in the plan's table resolved as proposed; no escalation needed.
+  Additions beyond the table: a row we removed and pushed keeps `removed_by = local` on later
+  fetches (it is not relabelled "removed in Keitaro"); a dormant pin follows the offer if it
+  reappears in Keitaro; Keitaro's shares go into the base unchanged even if they don't total
+  100 (Keitaro allows that), and the first local op rebalances. Known limit of decision 7: a
+  crash-replayed *SetShare/TogglePin* leaves a pin-only diff (dirty, harmless re-push), while
+  Remove/Add/Bring back replay clean. Verification: verified — 61 tests, crapper max 7,
+  dryer clean, mutator 53/55 (same 2 equivalent mutants).
 
 ---
 

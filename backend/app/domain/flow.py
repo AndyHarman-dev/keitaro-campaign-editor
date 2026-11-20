@@ -303,3 +303,52 @@ def push_plan(working: FlowState) -> list[OfferLink]:
     if not links or total != 100:
         raise InvalidPush(f"active shares must total 100 (got {total} over {len(links)})")
     return links
+
+
+# --- fetch merge ---------------------------------------------------------------------------
+
+
+def signature(kt_offers: list[OfferLink]) -> list[list[int | str]]:
+    """What Keitaro had, in order; compared before a push to detect changes made in Keitaro."""
+    return [[link.offer_id, link.share, link.state] for link in kt_offers]
+
+
+def _from_keitaro(link: OfferLink, old: OfferRow | None) -> OfferRow:
+    pin = Pin(share=link.share, seq=old.pin.seq) if old and old.pin else None
+    return OfferRow(offer_id=link.offer_id, status=RowStatus.ACTIVE, share=link.share,
+                    kt_state=link.state, pin=pin)
+
+
+def _gone_from_keitaro(old: OfferRow, archived_ids: set[int]) -> tuple[OfferRow, list[str]]:
+    notes = []
+    row = old
+    if old.active:
+        row = replace(old, status=RowStatus.REMOVED, share=0, removed_by=RemovedBy.KEITARO)
+        notes.append(f"Offer [{old.offer_id}] was removed from this flow in Keitaro. "
+                     "Bring back + Push re-attaches it.")
+    if old.offer_id in archived_ids and not old.archived:
+        row = replace(row, archived=True)
+        notes.append(f"Offer [{old.offer_id}] was archived in Keitaro and can't be restored.")
+    return row, notes
+
+
+def merge_fetch(old_base: FlowState, kt_offers: list[OfferLink],
+                archived_ids: set[int]) -> Result:
+    """New base: Keitaro's rows in Keitaro's order, plus every remembered row Keitaro no longer
+    has, kept as removed right after the row it used to follow. Pins are local and survive."""
+    rows = [_from_keitaro(link, old_base.find(link.offer_id)) for link in kt_offers]
+    in_keitaro = {link.offer_id for link in kt_offers}
+    notes: list[str] = []
+    previous: int | None = None
+    for old in old_base.rows:
+        if old.offer_id not in in_keitaro:
+            row, row_notes = _gone_from_keitaro(old, archived_ids)
+            at = 0 if previous is None else _index(rows, previous) + 1
+            rows.insert(at, row)
+            notes += row_notes
+        previous = old.offer_id
+    return FlowState(rows=tuple(rows), next_pin_seq=old_base.next_pin_seq), notes
+
+
+def _index(rows: list[OfferRow], offer_id: int) -> int:
+    return next(i for i, r in enumerate(rows) if r.offer_id == offer_id)
