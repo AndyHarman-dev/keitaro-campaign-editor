@@ -592,6 +592,30 @@ decision.
   through `UVICORN_APP`; a Python 3.12 check of `binomialvariate`, and slow layer-4 tests timed
   against mutation. Decisions: none reopened; the vision is unchanged. Verification: plan only.
 
+- **2026-11-20**: context: the user set the goal "implement the plan /ub-mode" (plan approved,
+  status → InProgress), branch `feat/stats-impl` from `feat/stats-trends-design`. Actions:
+  Phases 1–6 built test-first: `domain/stats.py`; `KeitaroClient.report`, `KtReportRow`, the
+  fake's `/report/build` and traffic store; `keitaro/traffic.py` simulator; settings, launcher
+  `app/__main__.py`, `services/stats.py`, `api/stats.py`, fake controls (`traffic`, `profile`,
+  `fail-next`), demo traffic; the UI (`components/stats/*`, parity gate first); two-server
+  Playwright, the live report check, README and `.env.example`. Decisions (differences from the
+  plan): (1) the fake controls and the demo seed moved from Phase 3 to Phase 4, because they
+  clear the stats cache built there; `simulate` is a function `simulate(fake, …)` in
+  `keitaro/traffic.py`, not a fake method. (2) Simulator draws are keyed by a day's **age**, not
+  its date, so the demo shows the same picture every day; without it the demo test would flip
+  with the calendar. (3) The lag test needed 3,000 clicks a day: at 300 the 2 % tail adds
+  0.8 ± 0.9 paid leads a week, so the change differs by ~2 % SD and the 0.03 tolerance fails;
+  the band and the simulator were not tuned. (4) Demo: 3717 at 6 % base rate, 3749 drift +30 %
+  a week, seed 9 → 3749 ▲ +38 %, 3717 −16 % within a ±33 % band at 67 conversions, 11111 flat.
+  The plan text said "up, down and within-noise"; the Desired State's three offers give up,
+  quiet drop and flat, which is what was built. (5) The cache key includes today, so a day
+  rollover never serves yesterday's numbers. (6) Flow 1's seeded position mutant also survived
+  on main (the earlier fixer's report named the wrong line); its test is cherry-picked onto
+  `fix/seed-flow-position` for main. (7) Until the first stats reply the UI looks like the beta
+  is off, so the beta-off editor never flashes a skeleton. Verification: calibration measured
+  false positives 11/200 (5.5 %), power 200/200 at 273 → 165 conversions; seeded
+  `binomialvariate` identical on Python 3.12/3.13/3.14; see the commits for gate results.
+
 ## Decisions Log
 
 <!-- Owner's hand only. Format: YYYY-MM-DD: context, problem, decision (mark overrides/rejections). -->

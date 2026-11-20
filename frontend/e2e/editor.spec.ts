@@ -142,3 +142,10 @@ test('every offer in the add list can be picked, none is clipped by the flow car
   await flow(page).getByRole('button', { name: 'Add', exact: true }).click()
   await expect(share(page, lastId)).toHaveText('50%')
 })
+
+test('with the stats beta off, the editor shows placeholders and no period switch', async ({ page }) => {
+  await openNewCampaign(page, 3749)
+  await expect(row(page, 3749).getByLabel('No stats yet')).toHaveText('—')
+  await expect(row(page, 3749).getByLabel('No trends yet')).toHaveText('—')
+  await expect(page.getByRole('group', { name: 'Stats period' })).toHaveCount(0)
+})
