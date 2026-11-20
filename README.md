@@ -269,6 +269,61 @@ frontend/src/          React + TS; API types generated from OpenAPI (`npm run ge
 frontend/e2e/          Playwright specs
 ```
 
+## Limitations and what's next
+
+The app was built to fit a fixed time budget. These are the known gaps, and what each would take
+to close.
+
+### Not yet verified against real traffic
+
+- **Report rows have only been checked against the fake.** The tracker's only domain has no DNS
+  record, so no campaign link can get a click. Three things are still assumptions: that grouped
+  rows carry `stream_id` / `offer_id` / `day`, that the date range includes its last day, and
+  that days are cut in the requested timezone (A1, A2, A4 in
+  `.claude/vision/stats_trends.md`). Once a domain resolves, a five-minute check settles them.
+- **Attribution is assumed to be by click date**, which is Keitaro's default. If the tracker
+  reports by conversion date, only the lighter sparkline tail and its caption need to change.
+- **Currency is a label only.** `STATS_CURRENCY` changes the symbol and converts nothing, so the
+  tracker is assumed to report in one currency.
+
+### User experience
+
+- **Push preview and push history.** Push shows no before → after diff, and nothing records who
+  pushed what or when. Both were deferred until there is real traffic to justify them.
+- **Finer undo.** Cancel throws away every pending edit in a flow. Undoing a single step would
+  need the staged ops kept as an undoable stack.
+- **Acting on the numbers.** Stats only inform; you still type the shares yourself. A
+  "rebalance by EPC" suggestion would need a bandit-style policy and the guard rails that go
+  with it.
+- **More metrics:** Approve %, Confirmed EPC, cost / profit / ROI (these need cost data from
+  the traffic source), a flow-level trend next to each offer's trend, and breakdowns by country,
+  device or sub-id.
+- **Alerts** such as "offer B dropped 30 %" don't exist; you only see a trend when you open the
+  campaign.
+- **Bulk work:** there is no editing across campaigns (for example, removing one offer from every
+  campaign that uses it) and no creating several campaigns at once.
+- **Editing flows themselves:** landing pages inside flows, filters other than GEO, and creating
+  or deleting flows are all done in Keitaro.
+- **Making the tool deeper:** keyboard shortcuts beyond Enter / Escape on a share, saved views,
+  and a campaign list that shows key numbers before you open a campaign.
+
+### Technical
+
+- **Single user, single process.** The app has no login and listens on localhost only. The stats
+  cache lives in process memory, and the local state is SQLite. Sharing the app with a team would
+  take auth, a shared database (Postgres) and a shared cache. The optimistic version checks
+  already guard against two people pushing the same flow.
+- **Statistics are deliberately rough.** The trend uses a volume floor and an approximate noise
+  band (2 × √(1/c₁ + 1/c₂)). There are no confidence intervals on CR and no correction for
+  checking the screen every day (sequential testing).
+- **One report call per period.** Every period is a separate `POST /report/build`, and results
+  are cached briefly in memory. Large campaigns, or many users, would want a persisted daily
+  rollup that only re-fetches recent, still-settling days.
+- **Pushes are per flow and not atomic across flows.** Each flow is pushed and checked on its
+  own. A campaign-wide change that partly fails can leave one flow updated and another not.
+- **Live checks are opt-in.** CI runs only on the fake. Contract drift in Keitaro's API shows up
+  only when someone runs `pytest -m live` or `npm run e2e:live` against a real tracker.
+
 ## License
 
 Proprietary — all rights reserved. See [LICENSE](LICENSE).
