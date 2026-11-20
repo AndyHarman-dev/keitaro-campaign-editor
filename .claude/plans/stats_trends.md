@@ -616,6 +616,18 @@ decision.
   false positives 11/200 (5.5 %), power 200/200 at 273 → 165 conversions; seeded
   `binomialvariate` identical on Python 3.12/3.13/3.14; see the commits for gate results.
 
+- **2026-11-20**: context: post-implementation `/code-review medium` on
+  `feat/stats-trends-design...feat/stats-impl` (7 findings). Actions: applied 5 — a malformed
+  200 report now raises `UnreadableReport` and shows "Keitaro sent a report this app can't
+  read" instead of escaping as a 500; null measures count as 0; `simulate` replaces every
+  offer's row for a re-simulated day; the pending line hides at 0%; `KeyedTtlCache` evicts
+  expired keys. Decisions: rejected 2 as locked by this plan — the "didn't answer in time"
+  wording (Phase 4) and "New: no traffic yet" for any `added` row, even one re-added with
+  history (Phase 5). Also found in e2e: the demo assertion's regex ignored the ▲ arrow; the
+  spec was fixed, not the app. Verification: verified — 300 pytest, 82 vitest, 14 Playwright,
+  mutator 0 survivors (backend 274 + frontend 284 sites, `--mutate-all`), crapper < 10,
+  dryer clean. Needs user action: confirm Done; decide merge into `feat/stats-trends-design`.
+
 ## Decisions Log
 
 <!-- Owner's hand only. Format: YYYY-MM-DD: context, problem, decision (mark overrides/rejections). -->
