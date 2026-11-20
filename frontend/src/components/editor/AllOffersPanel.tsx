@@ -10,7 +10,8 @@ interface Props {
   onAdd: (flow: Flow, offerId: number) => void
 }
 
-/** Every offer this API key can read, with where it already is (vision §5 "Show all offers"). */
+/** Every offer this API key can read, with the flows it is active in (vision §5 "Show all offers").
+ * A removed row does not count: Add on it brings it back. */
 export default function AllOffersPanel({ flows, onAdd }: Props) {
   const [query, setQuery] = useState('')
   const [offers, setOffers] = useState<Offer[]>([])
@@ -34,7 +35,7 @@ export default function AllOffersPanel({ flows, onAdd }: Props) {
       <input id="all-q" type="search" placeholder="Search by name or ID" value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul className="all-offers">
         {offers.map((o) => {
-          const holding = flows.filter((f) => f.rows.some((r) => r.offer_id === o.id))
+          const holding = flows.filter((f) => f.rows.some((r) => r.offer_id === o.id && r.status === 'active'))
           return (
             <li key={o.id} aria-label={`[${o.id}] ${o.name}`}>
               <span className="mono muted">{o.id}</span>

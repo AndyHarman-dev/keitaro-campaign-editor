@@ -47,6 +47,19 @@ test('inline share edit applies on blur', async ({ page }) => {
   await expect(share(page, 3749)).toHaveText('30%')
 })
 
+test('a share typed and pushed straight away reaches Keitaro', async ({ page }) => {
+  await openNewCampaign(page, 3749)
+  await addOffer(page, 'oxys', /Oxys BE/)
+  await share(page, 3717).click()
+  await page.getByLabel('Share for offer 3717').fill('80')
+  await flow(page).getByRole('button', { name: 'Push to KT' }).click()
+  await expect(page.getByRole('button', { name: 'Fetch from KT' })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Fetch from KT' }).click()
+  await expect(share(page, 3717)).toHaveText('80%')
+  await expect(share(page, 3749)).toHaveText('20%')
+})
+
 test('push is blocked when Keitaro changed, and Fetch & merge keeps the pending edit', async ({ page }) => {
   await openNewCampaign(page, 3749)
   await addOffer(page, 'oxys', /Oxys BE/)

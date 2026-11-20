@@ -204,6 +204,35 @@ describe('fetch, push and cancel', () => {
     expect(await screen.findByRole('button', { name: 'Fetch from KT' })).toBeInTheDocument()
   })
 
+  it('sends a push typed right after a share edit only once the edit is applied, with its version', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const edited = dirtyView()
+    edited.flows[1] = { ...edited.flows[1], version: 4 }
+    const api = routes({
+      'GET /api/campaigns/216250/editor': { body: dirtyView() },
+      'POST /api/flows/1001/ops': { body: edited },
+      'POST /api/flows/1001/push': { body: view(undefined) },
+    })
+    const realFetch = globalThis.fetch
+    vi.stubGlobal('fetch', async (input: Request) => {
+      if (input.url.endsWith('/ops')) await gate
+      return realFetch(input)
+    })
+    const user = userEvent.setup()
+    renderEditor()
+    const section = await screen.findByRole('region', { name: 'Flow 2' })
+    await user.click(within(section).getAllByRole('button', { name: /Edit share of offer/ })[0])
+    await user.type(within(section).getByRole('spinbutton'), '0')
+    await user.click(within(section).getByRole('button', { name: 'Push to KT' }))
+    expect(api.of('POST /api/flows/1001/push')).toHaveLength(0)
+    release()
+    await waitFor(() => expect(api.of('POST /api/flows/1001/push')).toHaveLength(1))
+    expect(api.of('POST /api/flows/1001/push')[0].body).toEqual({ version: 4 })
+    expect(api.calls.map((c) => c.path).filter((p) => p.startsWith('/api/flows'))).toEqual(
+      ['/api/flows/1001/ops', '/api/flows/1001/push'])
+  })
+
   it('cancels one flow', async () => {
     const api = routes({ 'GET /api/campaigns/216250/editor': { body: dirtyView() }, 'POST /api/flows/1001/cancel': { body: view() } })
     const user = userEvent.setup()
@@ -277,6 +306,19 @@ describe('show all offers', () => {
     await waitFor(() => expect(within(panel).queryByRole('listitem', { name: /Offer 3749/ })).not.toBeInTheDocument())
     await user.click(within(panel).getByRole('button', { name: 'Add to Flow 2' }))
     await waitFor(() => expect(api.of('POST /api/flows/1001/ops')[0].body).toEqual({ version: 3, op: { kind: 'add', offer_id: 4242 } }))
+    await user.click(screen.getByRole('button', { name: 'Hide all offers' }))
+    expect(screen.queryByRole('region', { name: /All offers in Keitaro/ })).not.toBeInTheDocument()
+  })
+
+  it('offers to add back an offer that is only a removed row', async () => {
+    routes({ 'GET /api/campaigns/216250/editor': { body: view([flow({ rows: [row(3749, 100), row(3717, 0, { status: 'removed', removed_by: 'keitaro' })] })]) } })
+    const user = userEvent.setup()
+    renderEditor()
+    await user.click(await screen.findByRole('button', { name: 'Show all offers' }))
+    const panel = screen.getByRole('region', { name: /All offers in Keitaro/ })
+    const removed = await within(panel).findByRole('listitem', { name: /Offer 3717/ })
+    expect(within(removed).queryByText('in Flow 2')).not.toBeInTheDocument()
+    expect(within(removed).getByRole('button', { name: 'Add to Flow 2' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Hide all offers' }))
     expect(screen.queryByRole('region', { name: /All offers in Keitaro/ })).not.toBeInTheDocument()
   })

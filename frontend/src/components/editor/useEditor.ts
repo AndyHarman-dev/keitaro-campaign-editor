@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, api, call, type Schemas } from '../../api/client'
+import { SerialQueue, flowIn } from './serialQueue'
 
 type View = Schemas['EditorView']
 type Flow = Schemas['FlowView']
+type Reply = Promise<{ data?: View; error?: unknown; response: Response }>
 export type FlowProblem = Schemas['FlowProblem']
 export type OpIn = Schemas['OpRequest']['op']
 
@@ -13,17 +15,22 @@ function problemOf(error: unknown): FlowProblem | null {
 
 const versionsOf = (view: View) => Object.fromEntries(view.flows.map((f) => [f.stream_id, f.version]))
 
-/** Editor state: the backend's view, notes to show, and per-flow conflict/stale problems. */
+/** Editor state: the backend's view, notes to show, and per-flow conflict/stale problems.
+ *
+ * Requests run one at a time, and each is built only when its turn comes, from the latest
+ * view. A share edit applied on blur followed by a click on Push therefore sends the push
+ * after the edit, with the version the edit produced. */
 export function useEditor(campaignId: number) {
   const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<string[]>([])
   const [problems, setProblems] = useState<Record<number, FlowProblem>>({})
+  const queue = useRef(new SerialQueue<View>()).current
 
-  const run = useCallback(async (request: Promise<{ data?: View; error?: unknown; response: Response }>,
-    streamId?: number, clearsProblems = false) => {
+  const run = useCallback(async (request: Reply, streamId?: number, clearsProblems = false) => {
     try {
       const next = await call(request)
+      queue.current = next
       setView(next)
       setNotes(next.notes)
       setError(null)
@@ -33,31 +40,42 @@ export function useEditor(campaignId: number) {
       if (problem && streamId !== undefined) setProblems((p) => ({ ...p, [streamId]: problem }))
       else setError(e instanceof Error ? e.message : String(e))
     }
-  }, [])
+  }, [queue])
+
+  const enqueue = useCallback((build: (current: View | null) => Reply | null, streamId?: number, clearsProblems = false) =>
+    queue.push(build, (request) => run(request, streamId, clearsProblems)), [queue, run])
 
   const path = { params: { path: { campaign_id: campaignId } } }
   const reload = useCallback(
-    () => run(api.GET('/api/campaigns/{campaign_id}/editor', { params: { path: { campaign_id: campaignId } } }), undefined, true),
-    [run, campaignId],
+    () => enqueue(() => api.GET('/api/campaigns/{campaign_id}/editor', { params: { path: { campaign_id: campaignId } } }), undefined, true),
+    [enqueue, campaignId],
   )
   useEffect(() => { reload() }, [reload])
 
+  /** A flow request built from the flow's current version; skipped if the flow is gone. */
+  const onFlow = (flow: Flow, send: (current: Flow) => Reply) => enqueue((v) => {
+    const current = flowIn(v, flow.stream_id)
+    return current && send(current)
+  }, flow.stream_id)
   const flowPath = (flow: Flow) => ({ params: { path: { stream_id: flow.stream_id } } })
+  const all = (url: '/api/campaigns/{campaign_id}/push' | '/api/campaigns/{campaign_id}/cancel') =>
+    enqueue((v) => v && api.POST(url, { ...path, body: { versions: versionsOf(v) } }))
+
   return {
     view, error, notes, problems,
     dismissNotes: () => setNotes([]),
     reload,
-    fetch: () => run(api.POST('/api/campaigns/{campaign_id}/fetch', path), undefined, true),
+    fetch: () => enqueue(() => api.POST('/api/campaigns/{campaign_id}/fetch', path), undefined, true),
     op: (flow: Flow, op: OpIn) =>
-      run(api.POST('/api/flows/{stream_id}/ops', { ...flowPath(flow), body: { version: flow.version, op } }), flow.stream_id),
+      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/ops', { ...flowPath(f), body: { version: f.version, op } })),
     forget: (flow: Flow, offerId: number) =>
-      run(api.POST('/api/flows/{stream_id}/forget', { ...flowPath(flow), body: { version: flow.version, offer_id: offerId } }), flow.stream_id),
+      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/forget', { ...flowPath(f), body: { version: f.version, offer_id: offerId } })),
     push: (flow: Flow) =>
-      run(api.POST('/api/flows/{stream_id}/push', { ...flowPath(flow), body: { version: flow.version } }), flow.stream_id),
+      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/push', { ...flowPath(f), body: { version: f.version } })),
     cancel: (flow: Flow) =>
-      run(api.POST('/api/flows/{stream_id}/cancel', { ...flowPath(flow), body: { version: flow.version } }), flow.stream_id),
-    pushAll: () => view && run(api.POST('/api/campaigns/{campaign_id}/push', { ...path, body: { versions: versionsOf(view) } })),
-    cancelAll: () => view && run(api.POST('/api/campaigns/{campaign_id}/cancel', { ...path, body: { versions: versionsOf(view) } })),
+      onFlow(flow, (f) => api.POST('/api/flows/{stream_id}/cancel', { ...flowPath(f), body: { version: f.version } })),
+    pushAll: () => all('/api/campaigns/{campaign_id}/push'),
+    cancelAll: () => all('/api/campaigns/{campaign_id}/cancel'),
   }
 }
 

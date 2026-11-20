@@ -201,7 +201,7 @@ describe('new campaign form', () => {
     routes({
       'POST /api/campaigns': {
         status: 502,
-        body: { detail: { message: 'Invalid filter', keitaro_status: 400, archived_campaign: true } },
+        body: { detail: { message: 'Invalid filter', keitaro_status: 400, archived_campaign: true, campaign_id: 1000 } },
       },
     })
     const user = userEvent.setup()
@@ -227,6 +227,34 @@ describe('new campaign form', () => {
     await fillForm(user)
     await user.click(screen.getByRole('button', { name: 'Create in Keitaro' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Nothing was created.')
+  })
+
+  it('warns when a half-made campaign could not be archived', async () => {
+    routes({
+      'POST /api/campaigns': {
+        status: 502,
+        body: { detail: { message: 'Invalid filter', keitaro_status: 400, archived_campaign: false, campaign_id: 1000 } },
+      },
+    })
+    const user = userEvent.setup()
+    renderScreen()
+    await fillForm(user)
+    await user.click(screen.getByRole('button', { name: 'Create in Keitaro' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Campaign #1000 was created without its flows and could not be archived. Archive it in Keitaro before you retry.')
+    expect(alert).not.toHaveTextContent('Nothing was created.')
+  })
+
+  it('forgets the picked offer when the offer text is edited', async () => {
+    routes()
+    const user = userEvent.setup()
+    renderScreen()
+    await fillForm(user)
+    const create = screen.getByRole('button', { name: 'Create in Keitaro' })
+    expect(create).toBeEnabled()
+    await user.clear(screen.getByLabelText('Offer'))
+    await user.type(screen.getByLabelText('Offer'), 'oxys')
+    expect(create).toBeDisabled()
   })
 
   it('lists .env default problems above Advanced', async () => {

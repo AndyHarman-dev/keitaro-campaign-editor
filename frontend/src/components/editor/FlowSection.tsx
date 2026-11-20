@@ -40,7 +40,7 @@ function AddOffer({ flow, onAdd }: { flow: Flow; onAdd: (offerId: number) => voi
   return (
     <div className="add-offer">
       <OfferPicker key={round} id={`add-${flow.stream_id}`} label={`Add offer to ${flow.name}`}
-        placeholder="Add offer — search by name or ID" onPick={setPicked} pickedLabel={(o) => `[${o.id}] ${o.name}`}
+        placeholder="Add offer — search by name or ID" onPick={setPicked} onClear={() => setPicked(null)} pickedLabel={(o) => `[${o.id}] ${o.name}`}
         exclude={flow.rows.map((r) => r.offer_id)} />
       <button type="button" className="secondary" disabled={!picked}
         onClick={() => { if (picked) onAdd(picked.id); setPicked(null); setRound((n) => n + 1) }}>Add</button>

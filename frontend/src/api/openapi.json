@@ -5,6 +5,47 @@
   "version": "0.1.0"
  },
  "paths": {
+  "/api/health": {
+   "get": {
+    "summary": "Health",
+    "operationId": "health_api_health_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Health Api Health Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/keitaro/ping": {
+   "get": {
+    "summary": "Keitaro Ping",
+    "description": "Checks that the tracker URL and API key in .env work (lists campaign count).",
+    "operationId": "keitaro_ping_api_keitaro_ping_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "type": "object",
+         "title": "Response Keitaro Ping Api Keitaro Ping Get"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/campaigns": {
    "get": {
     "summary": "List Campaigns",
@@ -718,47 +759,6 @@
      }
     }
    }
-  },
-  "/api/health": {
-   "get": {
-    "summary": "Health",
-    "operationId": "health_api_health_get",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "type": "object",
-         "title": "Response Health Api Health Get"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/keitaro/ping": {
-   "get": {
-    "summary": "Keitaro Ping",
-    "description": "Checks that the tracker URL and API key in .env work (lists campaign count).",
-    "operationId": "keitaro_ping_api_keitaro_ping_get",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "type": "object",
-         "title": "Response Keitaro Ping Api Keitaro Ping Get"
-        }
-       }
-      }
-     }
-    }
-   }
   }
  },
  "components": {
@@ -1190,6 +1190,18 @@
       "type": "boolean",
       "title": "Archived Campaign",
       "default": false
+     },
+     "campaign_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Campaign Id",
+      "description": "Set when the campaign was created before the failure"
      }
     },
     "type": "object",

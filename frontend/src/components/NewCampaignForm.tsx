@@ -62,7 +62,7 @@ export default function NewCampaignForm() {
         <input id="cname" type="text" placeholder="e.g. RO beauty — spring" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       <GeoInput geos={geos} onChange={setGeos} />
-      <OfferPicker id="offer" label="Offer" placeholder="Search offers by name or ID" onPick={setOffer}
+      <OfferPicker id="offer" label="Offer" placeholder="Search offers by name or ID" onPick={setOffer} onClear={() => setOffer(null)}
         pickedLabel={(o) => `[${o.id}] ${o.name}`} />
       <AdvancedChoices lookups={lookups} overrides={overrides} onChange={setOverrides} />
       <Preview geos={geos} offer={offer} />

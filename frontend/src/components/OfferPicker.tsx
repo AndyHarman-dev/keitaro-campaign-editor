@@ -9,13 +9,15 @@ interface Props {
   label: string
   placeholder: string
   onPick: (offer: Offer) => void
+  /** Called when the text is edited after a pick: the pick no longer matches the field. */
+  onClear: () => void
   /** Text shown after a pick; the field clears itself when absent. */
   pickedLabel?: (offer: Offer) => string
   exclude?: number[]
 }
 
 /** Autocomplete over the offers this API key can read. */
-export default function OfferPicker({ id, label, placeholder, onPick, pickedLabel, exclude = [] }: Props) {
+export default function OfferPicker({ id, label, placeholder, onPick, onClear, pickedLabel, exclude = [] }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [matches, setMatches] = useState<Offer[]>([])
@@ -45,7 +47,7 @@ export default function OfferPicker({ id, label, placeholder, onPick, pickedLabe
       <label htmlFor={id}>{label}</label>
       <input id={id} type="text" placeholder={placeholder} value={query} autoComplete="off"
         role="combobox" aria-expanded={open && shown.length > 0} aria-controls={`${id}-list`}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true) }} onFocus={() => setOpen(true)} />
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); onClear() }} onFocus={() => setOpen(true)} />
       {open && shown.length > 0 && (
         <ul id={`${id}-list`} role="listbox" aria-label="Matching offers" className="options">
           {shown.slice(0, 20).map((o) => (

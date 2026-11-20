@@ -12,14 +12,14 @@ export interface Problem {
 
 const GENERIC = 'Could not create the campaign.'
 
+function leftover(failure: Failure): string {
+  if (failure.campaign_id == null) return 'Nothing was created.'
+  if (failure.archived_campaign) return 'The flows failed after the campaign was created, so it was archived. You can retry.'
+  return `Campaign #${failure.campaign_id} was created without its flows and could not be archived. Archive it in Keitaro before you retry.`
+}
+
 function keitaroProblem(failure: Failure): Problem {
-  return {
-    title: 'Keitaro rejected the campaign.',
-    message: failure.message,
-    note: failure.archived_campaign
-      ? 'The flows failed after the campaign was created, so it was archived. You can retry.'
-      : 'Nothing was created.',
-  }
+  return { title: 'Keitaro rejected the campaign.', message: failure.message, note: leftover(failure) }
 }
 
 /** What to tell the user about a failed create. */
