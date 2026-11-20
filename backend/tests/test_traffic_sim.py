@@ -106,6 +106,15 @@ def test_simulating_again_is_idempotent_and_replaces_those_days():
     assert fake.traffic[(cid, sid, 1, day(-5))] == first[(cid, sid, 1, day(-5))]
 
 
+def test_simulating_again_drops_offers_no_longer_in_the_flow():
+    fake, cid, sid = tracker((1, 50), (2, 50))
+    simulate(fake, cid, 3, 100, today=TODAY, seed=1)
+    fake.streams[sid]["offers"][1]["state"] = "paused"
+    simulate(fake, cid, 3, 100, today=TODAY, seed=1)
+    assert {o for (c, s, o, d) in fake.traffic} == {1}
+    assert sum(k.clicks for k in fake.traffic.values()) == 3 * 100 + 50
+
+
 def test_seed_changes_the_draws():
     a, cid, _ = tracker((1, 100))
     b, _, _ = tracker((1, 100))

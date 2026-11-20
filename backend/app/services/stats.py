@@ -18,7 +18,7 @@ from app.api.schemas import (
 )
 from app.config import Settings
 from app.domain.stats import Cell, Counts, FlowStats, Period, Trend, report_range, summarize
-from app.keitaro.client import KeitaroClient, KeitaroError
+from app.keitaro.client import KeitaroClient, KeitaroError, UnreadableReport
 
 PLACES = Decimal("0.0001")
 
@@ -28,6 +28,8 @@ def money(value: Decimal | None) -> str | None:
 
 
 def unavailable_reason(err: KeitaroError) -> str:
+    if isinstance(err, UnreadableReport):
+        return "Keitaro sent a report this app can't read"
     if err.status == 403:
         return "this API key may not read reports"
     if err.status == 0 or err.status >= 500:

@@ -27,6 +27,13 @@ class KeitaroError(Exception):
         self.message = message
 
 
+class UnreadableReport(KeitaroError):
+    """Keitaro answered 200, but the body is not the report we asked for."""
+
+    def __init__(self, message: str):
+        super().__init__(200, message)
+
+
 class ForbiddenPath(Exception):
     pass
 
@@ -149,8 +156,11 @@ class KeitaroClient:
                 "dimensions": REPORT_DIMENSIONS, "measures": REPORT_MEASURES,
                 "filters": [{"name": "campaign_id", "operator": "EQUALS",
                              "expression": campaign_id}]}
-        data = await self._request("POST", "/report/build", json=body)
-        return [KtReportRow.model_validate(r).to_day_row() for r in data["rows"]]
+        try:
+            data = await self._request("POST", "/report/build", json=body)
+            return [KtReportRow.model_validate(r).to_day_row() for r in data["rows"]]
+        except (ValueError, KeyError, TypeError) as exc:  # ValidationError is a ValueError
+            raise UnreadableReport(type(exc).__name__) from None
 
 
 def _links(offers: list[OfferLink]) -> list[dict[str, Any]]:

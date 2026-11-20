@@ -83,6 +83,7 @@ class KeyedTtlCache:
         return None if item is None else item.get()
 
     def put(self, key: Hashable, value: Any) -> None:
+        self._items = {k: c for k, c in self._items.items() if c.get() is not None}
         self._items.setdefault(key, TtlCache(self._ttl, self._clock)).put(value)
 
     def clear(self) -> None:

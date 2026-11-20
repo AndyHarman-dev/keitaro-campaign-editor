@@ -9,7 +9,7 @@ import pytest
 from app.api import deps
 from app.api.deps import KeyedTtlCache
 from app.domain.stats import Counts
-from app.keitaro.client import KeitaroError
+from app.keitaro.client import KeitaroError, UnreadableReport
 from app.main import app, create_app
 from app.services.stats import unavailable_reason
 from tests.local import LocalClient
@@ -145,6 +145,11 @@ def test_an_unreachable_tracker_is_reported_as_not_answering():
     assert unavailable_reason(KeitaroError(1, "odd")) == "Keitaro answered 1"
 
 
+def test_an_unreadable_report_says_so():
+    assert unavailable_reason(UnreadableReport("no rows")) == (
+        "Keitaro sent a report this app can't read")
+
+
 def test_a_failure_is_not_cached(stats, fake):
     fake.fail_next("POST", "/report/build", 503, "down")
     url = f"/api/campaigns/{CID}/stats?period=7"
@@ -165,6 +170,8 @@ def test_keyed_cache_keeps_keys_apart_and_expires():
     assert (cache.get("a"), cache.get("b")) == (1, None)
     now[0] = 61
     assert cache.get("a") is None
+    cache.put("c", 3)
+    assert "a" not in cache._items  # expired keys go, so a long-running server doesn't grow
     cache.put("a", 2)
     cache.clear()
     assert cache.get("a") is None

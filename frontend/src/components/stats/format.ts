@@ -22,10 +22,12 @@ const clicksText = (n: number) => n.toLocaleString('en-US')
 
 export const noClicksLabel = (p: PeriodKey) => (p === 'today' ? 'No clicks today' : `No clicks in ${p} days`)
 
-/** "18% still pending"; on Today, "today: mostly pending (90% still pending)". Empty with no postbacks. */
+/** "18% still pending"; on Today, "today: mostly pending (90% still pending)".
+ * Empty with no postbacks, or when nothing rounds to a whole percent still pending. */
 export function pendingLabel(cell: Cell, p: PeriodKey): string {
-  if (cell.pending === null) return ''
-  const share = `${Math.round(cell.pending * 100)}% still pending`
+  const rounded = cell.pending === null ? 0 : Math.round(cell.pending * 100)
+  if (rounded === 0) return ''
+  const share = `${rounded}% still pending`
   return p === 'today' ? `today: mostly pending (${share})` : share
 }
 

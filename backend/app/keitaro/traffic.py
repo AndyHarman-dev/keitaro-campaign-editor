@@ -104,7 +104,7 @@ def simulate(fake: FakeKeitaro, campaign_id: int, days: int, clicks_per_day: int
         for d in span:
             total = round(clicks_per_day * (today_fraction if d.age == 0 else 1))
             off_offer = round(total * no_offer)
-            fake.traffic.pop((campaign_id, stream["id"], None, d.day), None)
+            fake.forget_day(campaign_id, stream["id"], d.day)
             if off_offer:
                 fake.record(campaign_id, stream["id"], None, d.day, Counts(clicks=off_offer))
             for oid, clicks in split_clicks(total - off_offer, shares).items():

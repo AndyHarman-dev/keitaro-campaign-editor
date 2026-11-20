@@ -45,6 +45,9 @@ describe('stats cell', () => {
     expect(pendingLabel(cell(), '7')).toBe('17% still pending')
     expect(pendingLabel(cell({ pending: 0.9 }), 'today')).toBe('today: mostly pending (90% still pending)')
     expect(pendingLabel(cell({ pending: null }), '7')).toBe('')
+    expect(pendingLabel(cell({ pending: 0 }), 'today')).toBe('')
+    expect(pendingLabel(cell({ pending: 0.004 }), '7')).toBe('')
+    expect(pendingLabel(cell({ pending: 0.005 }), '7')).toBe('1% still pending')
   })
 
   it('shows the observed split, but not for flow totals', () => {

@@ -146,6 +146,11 @@ class FakeKeitaro:
         """States one day's exact counts for a flow and offer, replacing what was there."""
         self.traffic[(campaign_id, stream_id, offer_id, day)] = counts
 
+    def forget_day(self, campaign_id: int, stream_id: int, day: date) -> None:
+        """Drops every offer's row for one flow and day, so a re-simulated day starts empty."""
+        for key in [k for k in self.traffic if k[:2] == (campaign_id, stream_id) and k[3] == day]:
+            del self.traffic[key]
+
     def profile(self, offer_id: int) -> OfferProfile:
         return self.profiles.get(offer_id) or default_profile(offer_id)
 

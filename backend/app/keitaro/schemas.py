@@ -83,7 +83,7 @@ class KtReportRow(_Kt):
     """One /report/build row grouped by stream, offer and day (vision §5, assumption A1).
 
     Lenient on purpose: numbers may arrive as strings, a row with no offer may carry null, 0
-    or "". Missing measures count as zero.
+    or "". Missing or null measures count as zero.
     """
 
     stream_id: int
@@ -101,10 +101,16 @@ class KtReportRow(_Kt):
     def _no_offer(cls, value: Any) -> Any:
         return value or None
 
+    @field_validator("clicks", "leads", "sales", "rejected", mode="before")
+    @classmethod
+    def _null_count(cls, value: Any) -> Any:
+        return 0 if value is None else value
+
     @field_validator("lead_revenue", "sale_revenue", mode="before")
     @classmethod
     def _exact_money(cls, value: Any) -> Any:
-        return str(value)  # a float 0.1 becomes Decimal("0.1"), not its binary expansion
+        # a float 0.1 becomes Decimal("0.1"), not its binary expansion; null counts as zero
+        return "0" if value is None else str(value)
 
     def to_day_row(self) -> DayRow:
         return DayRow(self.stream_id, self.offer_id, self.day,

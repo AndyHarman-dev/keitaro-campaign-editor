@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 from app.domain.stats import Counts, DayRow
-from app.keitaro.client import KeitaroClient, KeitaroError
+from app.keitaro.client import KeitaroClient, KeitaroError, UnreadableReport
 from app.keitaro.fake import REPORT_COLUMNS, FakeKeitaro
 from app.keitaro.schemas import KtReportRow
 
@@ -38,6 +38,13 @@ def test_report_row_without_an_offer_maps_to_none(missing):
 
 def test_report_row_missing_measures_count_as_zero():
     row = KtReportRow.model_validate({"stream_id": 7, "offer_id": 3, "day": "2026-11-19"})
+    assert row.to_day_row().counts == Counts()
+
+
+def test_report_row_null_measures_count_as_zero():
+    row = KtReportRow.model_validate(
+        {"stream_id": 7, "offer_id": 3, "day": "2026-11-19", "clicks": None, "leads": None,
+         "sales": None, "rejected": None, "lead_revenue": None, "sale_revenue": None})
     assert row.to_day_row().counts == Counts()
 
 
@@ -74,6 +81,21 @@ async def test_client_report_error_is_a_keitaro_error():
         await kt.report(1, D1, D3, "UTC")
     await kt.aclose()
     assert err.value.status == 403
+
+
+@pytest.mark.parametrize("response", [
+    httpx.Response(200, json={"total": 0}),
+    httpx.Response(200, text="<html>maintenance</html>"),
+    httpx.Response(200, json={"rows": [{"stream_id": None, "day": "2026-11-19"}]}),
+    httpx.Response(200, json={"rows": "nope"}),
+], ids=["no rows", "not json", "null flow", "rows not a list"])
+async def test_client_unreadable_report_is_its_own_keitaro_error(response):
+    kt = KeitaroClient("https://tracker.example", "k" * 32,
+                       transport=httpx.MockTransport(lambda _: response))
+    with pytest.raises(UnreadableReport) as err:
+        await kt.report(1, D1, D3, "UTC")
+    await kt.aclose()
+    assert isinstance(err.value, KeitaroError)
 
 
 # --- the fake's /report/build -------------------------------------------------------------
