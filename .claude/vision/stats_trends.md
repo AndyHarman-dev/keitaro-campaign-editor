@@ -55,7 +55,7 @@ metric tweak) and artboard **4 · Stats & trends** (every cell state and the mat
 - **Stats column**, per offer in a flow:
   - the main metric in bold (e.g. `EPC $0.91`);
   - `2,980 clicks · CR 5.1 %`;
-  - `34 % of flow clicks (observed)`: the split Keitaro actually delivered.
+  - `34 % of this flow's clicks went here`: the split Keitaro actually delivered.
 - **Trend column**: a 14-day sparkline of the main metric, plus the change of the last 7
   complete days against the 7 before (`▲ +14 %`, `▼ −17 %`, `flat`). Up is blue, down is orange;
   they also differ in lightness and arrow direction, so they don't rely on colour alone.
@@ -95,7 +95,7 @@ Definitions follow Keitaro's glossary so our numbers match what the buyer sees i
 **EPC is the number that compares offers fairly.** Offers pay different amounts per conversion,
 so a higher CR does not mean more money: an offer converting 3 % at $25 earns more per click
 (EPC $0.75) than one converting 5 % at $10 (EPC $0.50). That's why it is the proposed main
-metric. CR and Confirmed EPC remain one switch away (open question Q1).
+metric (settled: EPC main, CR second).
 
 ### Rule 1: add up first, divide once
 
@@ -119,7 +119,7 @@ derives CR, EPC and Approve % itself.
 
 - **Stats** always show, with the click count beside them so the volume is visible.
 - **Trend** needs **at least 100 clicks in each of the two weeks**; below that it says "Not enough
-  traffic". Changes under **5 %** either way read "flat". (Both thresholds are open, Q4.)
+  traffic". Changes under **5 %** either way read "flat". (Both thresholds settled.)
 
 ### Rule 4: per flow, not just per offer
 
@@ -146,7 +146,7 @@ So the last few days of any chart keep rising after the fact. EPC lags less than
 (lead money counts at once), but rejections can still lower it. The design draws the last 2 days
 of the sparkline **dashed** to say "still growing". (A Keitaro admin can switch the tracker to
 conversion-date reporting; then past days stop changing, but conversions land on the day they
-arrive rather than the day of the click. Which mode this tracker uses is open, Q5.)
+arrive rather than the day of the click. We assume click date, Keitaro's default; see Decisions settled.)
 
 **Testing does not wait for lag**: the fake tracker's clock and approvals are ours (§ 4).
 
@@ -223,16 +223,18 @@ check takes five minutes.
   default; the real tracker is used for contract and "no clicks" checks only.
 - Real-row verification waits for a resolving domain; no workaround against the shared tracker.
 
+- **Q1 → Metrics:** EPC is the main number, CR the second. Approve % and Confirmed EPC are
+  not shown for now.
+- **Q2 → Timezone:** one fixed timezone cuts days, set in backend config (default UTC).
+- **Q3 → Currency:** `$`.
+- **Q4 → Thresholds:** a trend needs ≥ 100 clicks in each week; |change| < 5 % reads "flat".
+- **Q5 → Attribution:** assume Keitaro's default, click date. Recent days may still rise, so the
+  trend skips today and draws the last 2 days lighter. If the tracker turns out to report by
+  conversion date, only the lighter tail and its label change; the maths stays.
+
 ## 7. Open questions
 
-- **Q1. Main metric**: EPC (proposed), Confirmed EPC, or CR. Toggle it on artboard 2 › Tweaks.
-  Also: show Approve % next to it?
-- **Q2. Timezone** for cutting days: a setting defaulting to UTC (proposed), a fixed zone, or
-  the viewer's browser.
-- **Q3. Currency label**: a setting defaulting to `$` (proposed), or no symbol. The report does
-  not say which currency the tracker stores (set in Keitaro's settings).
-- **Q4. Thresholds**: 100 clicks per week for a trend and 5 % for "flat", or other numbers.
-- **Q5.** Does this tracker report by click date (default) or conversion date?
+None. All five were answered on 2026-11-20 (see above).
 
 ## 8. Decisions Log
 
