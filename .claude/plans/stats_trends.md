@@ -107,6 +107,12 @@ Implementation decisions (this plan):
   and the sparkline's pixel coordinates.
 - **P6. Cache:** a per-(campaign, period) cache of 60 s. A Fetch passes `refresh=true`, which
   skips it, and the fake traffic controls clear it.
+  - The cache is built in `create_app` and kept on `app.state`, handed out through a dependency.
+    It is **not** a module global like `offers_cache`.
+  - Why: every `FakeKeitaro` hands out ids from 1000, so campaigns in different tests share ids.
+    `fake.record()` doesn't pass through the controls that clear the cache. A global cache
+    would therefore leak one test's numbers into another and make the oracle tests depend on
+    their order.
 - **P7. "Today" is a dependency, not a call to `date.today()`.** `app.state.today()` returns
   the current date in the configured timezone. Tests and the fake simulator use the same clock,
   so day buckets and "today" never disagree.
@@ -155,13 +161,24 @@ Four layers, each catching a different class of mistake:
    - **Calibration of the noise band:**
      - 200 seeds of two weeks with the same offer profile flag a "real" change in ≤ 10 % of runs
        (a 2σ band should be about 5 %);
-     - a −40 % drift at about 150 conversions a week is flagged as down in ≥ 95 % of runs.
+     - a −40 % drift at about **300 → 180** conversions a week is flagged as down in ≥ 95 % of
+       runs. Expected power is above 99 %: band ±19 %, and the SD of the log-ratio is about
+       0.09.
+
+       At 150 → 90 the power is only about 93 %, so a correct simulator could fail a 95 %
+       threshold. That is why the volume is set here and not left to taste.
 
      These two tests show the band is neither too tight nor too loose.
    - **Profile recovery:** with lag off, 100,000 clicks at cr_all 5 %, approve 60 % and payout
      $20 give a settled CR within 3σ of 3 % and an EPC within 3σ of $0.60.
    - **Lag:** with lag on, yesterday's pending share is close to the configured 60 %, and the
-     trend verdict is unchanged with lag on or off.
+     trend verdict is the same with lag on or off. This needs the **same draws**:
+     - postbacks and sales are drawn identically either way;
+     - lag only relabels some of them as leads (seeded per day, separately from the outcome
+       draws).
+
+     Otherwise the two runs would be different samples and the test would flake near the band
+     edge.
    - **Split:** after a push to 60 / 20 / 20, a simulated week's observed split is within ±2
      points of the new shares. A 14-day window spanning the push shows the blend (Rule 5).
 
@@ -275,9 +292,12 @@ the column list or the range format differs from what was verified, and P2 needs
 
 **Model: Sonnet 5.** It is new code, but self-contained and seeded, and the statistical checks
 (layer 4) fail if it is wrong.
-**Escalate/stop if:** the band calibration test fails with a correct simulator (false
-positives > 10 %). That would mean the band formula in the vision is too tight for EPC with
-varying payouts, and it is a question for the user, not a code fix.
+**Escalate/stop if:** either calibration test fails (false positives > 10 %, or power < 95 %
+at 300 → 180).
+- First recheck the arithmetic of the test itself: volumes, seeds, and the same-draw
+  requirement.
+- **Never tune the band or the simulator to make it pass.** If the arithmetic holds, the vision's
+  band is wrong for this data, and that is a question for the user.
 
 - **Current State.** The fake can only simulate edits made in Keitaro (detach, archive).
 - **Desired State.**
@@ -290,13 +310,15 @@ varying payouts, and it is a question for the user, not a code fix.
     1. Split the day's clicks by the flow's **current** active shares, using largest
        remainders. A `no_offer` fraction gets `offer_id=None` (Rule 5). Today gets
        `today_fraction` of a day.
-    2. Draw postbacks ~ Binomial(clicks, cr_all × (1 + drift)^(day index)).
-    3. Assign statuses by age:
-       - lag off: all decided;
-       - lag on: undecided fraction 0.9 today, 0.6 at −1, 0.35 at −2, 0.1 up to −5, 0.02
-         after.
+    2. Draw postbacks ~ Binomial(clicks, cr_all × (1 + drift)^(day index)), and their final
+       outcome: sales ~ Binomial(postbacks, approve), the rest rejected. These draws never
+       depend on `lag`.
+    3. With lag on, relabel some of them as still undecided (leads), from a separate seeded
+       stream: 0.9 today, 0.6 at −1, 0.35 at −2, and **0.02 from −3 on**.
 
-       Then sales ~ Binomial(decided, approve), and the rest are rejected.
+       Days −3 and older are as settled as the older week, matching the vision's "both weeks
+       equally settled". With money booked on the lead, a 10 % undecided tail on days −3 to −5
+       would lift the newer week's EPC by about 3 % and bias every trend.
     4. Money is booked on the lead: `lead_revenue = leads × payout`,
        `sale_revenue = sales × payout`.
     5. Write the result into `traffic`, replacing those days: idempotent, so re-running gives
@@ -308,8 +330,17 @@ varying payouts, and it is a question for the user, not a code fix.
     - `DELETE /api/_fake/traffic?campaign_id=`.
 
     All three clear the stats cache.
-  - Seed: the demo campaign gets 30 days of traffic, with a drift on 3749 (up) and 3717 (down),
-    so a fresh `KEITARO_FAKE=1 --stats-beta` run shows every state at once.
+  - Seed: the demo campaign gets 30 days of traffic, so a fresh `KEITARO_FAKE=1 --stats-beta`
+    run shows every state at once:
+    - 3749 with a strong upward drift, a real ▲;
+    - 3717 with a −17 % drift at about 80 conversions a week, so it reads **"within noise"**
+      with the band shown (the vision's offer B);
+    - 11111 flat.
+
+    At realistic volumes (about 80 conversions a week, band about ±30 %) most trends read
+    "within noise", and that is the feature working. So the demo is built to show **why** a
+    quiet Trend column is useful, not only arrows: a scary-looking −17 % that the screen
+    declines to flag. The README's demo walkthrough says so.
 - **Problems.**
   - Randomness makes tests flaky.
   - Shares may be changed mid-simulation.
@@ -342,7 +373,8 @@ design.
         ours, rest = parser.parse_known_args(argv)
         if ours.stats_beta:
             os.environ["STATS_BETA"] = "1"
-        if not any(not a.startswith("-") for a in rest):
+        # A target looks like "module:attr"; "9" in "--port 9" is a value, not a target.
+        if not any(":" in a for a in rest if not a.startswith("-")):
             rest = ["app.main:app", *rest]
         uvicorn.main.main(args=rest)
     ```
