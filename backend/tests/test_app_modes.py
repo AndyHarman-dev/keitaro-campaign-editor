@@ -126,3 +126,24 @@ def test_fake_without_a_state_file_starts_from_the_demo_data(tmp_path):
     names = [c["name"] for c in LocalClient(create_app(settings)).get("/api/campaigns").json()]
     assert names == ["Demo campaign"]
     assert not list(tmp_path.glob("*.json"))
+
+
+def test_seeded_demo_campaign_resolves_its_domain_and_group(tmp_path):
+    api = LocalClient(create_app(_settings(tmp_path, keitaro_fake=True)))
+    campaign = api.get("/api/campaigns?q=demo").json()[0]
+    assert (campaign["domain"], campaign["group"]) == ("track.example", "Team")
+
+
+def test_seeded_tracker_hides_the_offer_this_key_may_not_read(tmp_path):
+    api = LocalClient(create_app(_settings(tmp_path, keitaro_fake=True)))
+    ids = [o["id"] for o in api.get("/api/offers").json()]
+    assert 3749 in ids
+    assert 500 not in ids
+
+
+def test_spa_fallback_stays_out_of_the_openapi_schema(tmp_path):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>app</html>")
+    app = create_app(_settings(tmp_path), frontend_dist=dist)
+    assert not any(path.startswith("/{") for path in app.openapi()["paths"])

@@ -80,7 +80,7 @@ class FakeKeitaro:
                  "unreadable": sorted(self.unreadable), "deleted_offers": sorted(self.deleted_offers),
                  "domains": self.domains, "groups": self.groups, "sources": self.sources}
         partial = self.state_file.with_suffix(".tmp")
-        partial.write_text(json.dumps(state, indent=1))
+        partial.write_text(json.dumps(state))
         os.replace(partial, self.state_file)
 
     @classmethod
