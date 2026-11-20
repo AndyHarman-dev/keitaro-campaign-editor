@@ -85,9 +85,50 @@ uv run uvicorn app.main:app                               # open http://127.0.0.
 
 Connectivity check: `http://127.0.0.1:8000/api/keitaro/ping`.
 
-**Without a tracker**: `KEITARO_FAKE=1 uv run uvicorn app.main:app` runs against an in-process
-fake Keitaro with demo offers and a demo campaign. Use a separate database for it, e.g.
-`DATABASE_URL=sqlite:////tmp/kce-demo.db` (run `alembic upgrade head` with the same variables first).
+## Run on the fake tracker
+
+`KEITARO_FAKE=1` swaps Keitaro for an in-process fake, so no tracker or API key is needed. Use it
+to try what a real key may not allow, such as share edits across several offers.
+
+Terminal 1, from the repo root (backend on the fake, with its own database `data/fake.db`):
+
+```bash
+cd backend && mkdir -p ../data && rm -f ../data/fake.db && export KEITARO_FAKE=1 DATABASE_URL="sqlite:///$(cd .. && pwd)/data/fake.db" && uv run alembic upgrade head && uv run uvicorn app.main:app
+```
+
+Terminal 2, from the repo root:
+
+```bash
+cd frontend && npm run dev                                # open http://localhost:5173
+```
+
+What the fake holds:
+
+- Five offers to pick from: Flexacil PE, Oxys BE, Joint Rx RO, Oxys [BEAUTY-CL-BE], Cardio Fresh CZ.
+- **Demo campaign** (#1000): Flow 1 (forced, AU → google.com) and Flow 2 with three offers at
+  34 / 33 / 33.
+- Domain, group and source use the names from `.env` (or placeholders when unset). Nothing
+  reaches a real tracker.
+
+Keep in mind:
+
+- The fake lives in memory and starts from the demo data on every start. The command above wipes
+  `data/fake.db` each time so the database and the fake stay in step; your real `data/app.db`
+  is never touched.
+- Don't add `--reload`: a code change would restart the fake but keep the database, and the
+  editor would show flows the fake no longer has.
+
+Simulate someone editing Keitaro directly (these endpoints exist only in fake mode):
+
+```bash
+# list a campaign's flow ids
+curl -s localhost:8000/api/campaigns/1000/editor | python3 -c 'import json,sys; [print(f["stream_id"], f["name"]) for f in json.load(sys.stdin)["flows"]]'
+curl -X POST localhost:8000/api/_fake/streams/1002/detach/3717    # remove an offer from a flow
+curl -X POST localhost:8000/api/_fake/offers/3717/archive         # archive an offer
+```
+
+After a detach, Push is blocked until you Fetch & merge; after an archive, Fetch tags the row
+"archived in Keitaro".
 
 ## Tests and quality gates
 
