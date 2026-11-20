@@ -76,12 +76,31 @@ cd backend && uv run uvicorn app.main:app --reload        # API on :8000
 cd frontend && npm run dev                                # UI on :5173, proxies /api to :8000
 ```
 
-**Production-style** (FastAPI serves the built UI):
+**Production-style** (FastAPI serves the built UI on one port, http://127.0.0.1:8000). Build
+the UI once; the same build serves every combination below, and stats & trends (beta) is
+switched on by the backend flag alone:
 
 ```bash
 cd frontend && npm run build && cd ../backend
-uv run uvicorn app.main:app                               # open http://127.0.0.1:8000
 ```
+
+Then, from `backend/`, pick one:
+
+| Tracker | Stats | Command |
+|---|---|---|
+| Real (`.env`) | off | `uv run alembic upgrade head && uv run uvicorn app.main:app` |
+| Real (`.env`) | on | `uv run alembic upgrade head && uv run python -m app --stats-beta` |
+| Fake | off | `export KEITARO_FAKE=1 DATABASE_URL="sqlite:///$(cd .. && pwd)/data/fake.db" KEITARO_FAKE_STATE="$(cd .. && pwd)/data/fake-keitaro.json" && mkdir -p ../data && uv run alembic upgrade head && uv run uvicorn app.main:app` |
+| Fake | on | the same exports, then `uv run alembic upgrade head && uv run python -m app --stats-beta` |
+
+- `STATS_BETA=1 uv run uvicorn app.main:app` is the same as `python -m app --stats-beta`.
+  Any uvicorn option goes after the flag, e.g. `uv run python -m app --stats-beta --port 8080`.
+- On the real tracker stats only read reports. Set `STATS_TIMEZONE` (IANA zone, default `UTC`)
+  to Keitaro's timezone so days split where Keitaro splits them, and `STATS_CURRENCY` for the
+  symbol shown.
+- `export` lasts for the terminal session: open a new terminal (or `unset KEITARO_FAKE
+  DATABASE_URL KEITARO_FAKE_STATE`) before switching back to the real tracker.
+- Leave out `KEITARO_FAKE_STATE` to have the fake start from the demo data on every start.
 
 Connectivity check: `http://127.0.0.1:8000/api/keitaro/ping`.
 

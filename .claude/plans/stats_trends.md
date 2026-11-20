@@ -1,5 +1,5 @@
 ---
-status: InProgress
+status: Done
 ---
 
 # Stats & Trends: implementation plan
@@ -652,6 +652,12 @@ decision.
   shape), and stats reload after a failed push (already rejected; plan rule). Verification:
   verified — 311 pytest, 85 vitest, 14 Playwright; mutator 0 survivors on touched files; crapper
   < 10; dryer clean.
+
+- **2026-11-20**: context: the user tested the beta on the fake tracker and confirmed the plan
+  done; asked for the run combinations in the README and a merge to main. Actions: README "Run"
+  lists production-style real/fake × stats on/off; status set to Done; PR #3 merged into
+  `feat/stats-trends-design`, then that branch into `main`. Decisions: none. Verification:
+  verified by the user (manual run); docs-only change after the last green suite.
 
 ## Decisions Log
 
